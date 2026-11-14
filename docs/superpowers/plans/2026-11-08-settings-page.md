@@ -396,6 +396,8 @@ settings are. Run the spec's whole by-hand list.
 
 ## Status
 
-Not started. #34 merged on 2026-11-09, so nothing blocks Phase 1. Phases 1 and 2 were
+Phase 1 (T1–T6) built on `feat/settings-window`, 2026-11-14: the four checks pass and the
+window was drawn offscreen; Checkpoint A's by-hand checks on Windows and the Mac are still to
+do. Phases 1 and 2 were
 refreshed against v0.6.3 on 2026-11-14, and Phases 4 and 5 rewritten on top of #79 the same
 day. Phase 3 waits for the `build-choice` decision.
