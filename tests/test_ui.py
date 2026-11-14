@@ -263,7 +263,7 @@ def test_longest_pin_line_fits_the_tab(monkeypatch, tmp_path):
     from maplelens import overlay
 
     tool = _tool(monkeypatch, tmp_path)
-    tool.pin_line.set_text("100%/h · Lvl in 99h 59m", False)
+    tool.pin_line.set_text("100.00%/h · Lvl in 99h 59m", False)
     assert tool.pin_line.sizeHint().width() <= overlay.TAB_W
 
 

@@ -12,8 +12,8 @@ from maplelens.tools.exp_meter.text import (
 
 
 def test_pin_text_values():
-    assert pin_text(Rate(12480, 0.42, 137), False) == ("25%/h · Lvl in 2h 17m", False)
-    assert pin_text(Rate(12480, 0.42, None), False) == ("25%/h · Lvl in —", False)
+    assert pin_text(Rate(12480, 0.42, 137), False) == ("25.20%/h · Lvl in 2h 17m", False)
+    assert pin_text(Rate(12480, 0.42, None), False) == ("25.20%/h · Lvl in —", False)
 
 
 def test_pin_text_states():
