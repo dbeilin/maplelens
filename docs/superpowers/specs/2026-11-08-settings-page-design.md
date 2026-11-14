@@ -93,9 +93,13 @@ Build in that order. Each part is its own PR, and none changes `version` in `pyp
   window to this; "like History" now means this.)*
 - **Mouse controls only:** checkboxes, buttons and sliders, never a text field, since the
   window never takes the keyboard *(my call)*.
-- **One scrolling page** with five headed sections: General, EXP, Path, Class, Quests *(my
-  call: five short sections still don't need a sidebar)*. A tool with nothing to set yet
-  (Quests) shows only its heading and is left out until it has a control *(my call)*.
+- **One scrolling page of cards, in the box's dark look** (Daniel, 2026-11-14, after trying
+  the first build): General first, then a card per tool in the tabs' order. **Each tool's
+  card is headed by its own on/off switch** (a toggle, painted in the box's colours), with
+  its settings indented under it; they grey out while it's off. A tool with nothing to set
+  yet says "Nothing to set yet". General shows only when it has anything (the installed
+  app's update check). Checkboxes are painted too (a yellow box with a check), and the whole
+  row takes the click. The window sizes to its cards, and scrolls past 640 px.
 - **Every change applies and saves at once.** There's no OK or Apply, matching today's
   toggles.
 - **The menu shrinks to** Update to X.Y.Z… (when there is one), Pick game window…, Open
@@ -104,21 +108,26 @@ Build in that order. Each part is its own PR, and none changes `version` in `pyp
 - **Pin stays on the EXP tab only.** It's a button the player already uses there, and a
   second copy in Settings would be the same setting in two places *(my call)*.
 
-**General section:**
+**Each tool's switch** (its card's heading):
+
+| Switch | Setting | Default |
+|---|---|---|
+| EXP | `exp_on` | on |
+| Path | `path_on` | on |
+| Class | `class_on` | on |
+| Quests | `quests_on` | on |
+
+**General:**
 
 | Control | Setting | Default | Notes |
 |---|---|---|---|
-| EXP tab | `exp_on` | on | |
-| Path tab | `path_on` | on | |
-| Class tab | `class_on` | on | |
-| Quests tab | `quests_on` | on | New since the first draft |
 | Check for updates automatically | `update_check` (existing) | on | Only where an update check exists (the installed app, Windows and Mac) |
 | Check for updates now | none | | A button, beside the toggle; its answer shows in the box's notice line, as today |
 
 **Turning a tool off:**
 
-- Its tab disappears and it stops working, live, with no restart. Its Settings section stays
-  but is greyed out.
+- Its tab disappears and it stops working, live, with no restart. Its card stays, with its
+  switch live and its settings greyed out.
 - The tab's button, dot and page are **hidden, not removed**, so every hard-coded tab index
   (listed above) stays right. The box's width doesn't change: it's the pages' fixed width.
 - **EXP off:** the meter closes and saves its open segment, as quitting does, and a fresh
@@ -135,7 +144,8 @@ Build in that order. Each part is its own PR, and none changes `version` in `pyp
   tool off also saves the reading it cost *(my call; it's small: one filter on `due`'s
   result in `Tick.run`)*.
 - If the open tab is turned off, the box shows the first tab still on.
-- **The last tool that's on can't be turned off:** its checkbox is disabled. A box with no
+- **The last tool that's on can't be turned off:** its switch is locked (it keeps its "on"
+  look, with a tooltip saying why). A box with no
   tabs has nothing to show *(my call)*.
 - **Rows that start a trip, with Path off:** "click to go" can't work, so the Class tab's
   rows (no `›`) and the Quests tab's target rows aren't clickable. They come back live when
@@ -415,8 +425,8 @@ def held(steady: bool, last_seen: float | None, now: float) -> bool:
   - The arrow at 24, 36 and 72 px stays centred on the same point; steady holds on a missed
     frame, and hides on a map change or when the trip stops.
   - Turning off each of the four tools hides its tab, stops its `update`, and keeps
-    `set_tab_dot`, `select` and `QuestFocus` indexes right. The last tool's checkbox is
-    disabled. EXP off hides the pinned line; Quests off stops the switch to Quests; Path off
+    `set_tab_dot`, `select` and `QuestFocus` indexes right. The last tool's switch is
+    locked. EXP off hides the pinned line; Quests off stops the switch to Quests; Path off
     makes Class and Quests rows unclickable. The box's width is the same before and after.
   - With Class or Quests off, the reader is never asked for their windows.
   - The menu no longer has the moved items, and has Settings… before Hide.

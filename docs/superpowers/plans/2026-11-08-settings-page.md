@@ -145,13 +145,14 @@ tab hides the footer too.
 
 ### Task T5: turning tools off
 
-**Description:** Four checkboxes in General. `OFF` in `Tick.run`, both calls of
+**Description:** A switch heading each tool's card (built that way after Daniel tried the first
+build; first done as four checkboxes in General). `OFF` in `Tick.run`, both calls of
 `update_tools`. Each tool gets a small `stop(now)`: EXP closes and saves (as `shutdown`
 does) and makes a fresh meter, and the app hides the pinned line (`set_footer_shown(False)`,
 back to `pinned` when on); Path ends the trip (`stop()`) and hides the arrow; Class hides its
 marks; Quests needs nothing beyond `OFF` (its `open` is false, so `QuestFocus` stays put).
 `Tick.run` drops an off tool's windows from `due(...)` before `reader.ask`. The last tool
-that's on has its checkbox disabled. Off tools' sections are greyed out.
+that's on has its switch locked. Off tools' settings are greyed out.
 
 **Acceptance criteria:**
 - [ ] Each of the four tools turns off and on live, and its `update` isn't called while off.

@@ -3,7 +3,7 @@
 import sys
 from collections.abc import Callable
 
-from PySide6.QtCore import QEvent, QObject, QPoint, QPointF, QRectF, Qt, QUrl
+from PySide6.QtCore import QEvent, QObject, QPoint, QPointF, QRectF, QSize, Qt, QUrl
 from PySide6.QtGui import (
     QAction,
     QColor,
@@ -267,11 +267,91 @@ def native_setup(widget: QWidget) -> None:
         overlay_mac.make_panel(widget)
 
 
+DIM = "#5b6678"  # a setting greyed out: its tool is off
+
+
+class _PaintedCheck(QCheckBox):
+    """A checkbox drawn in the box's colours; its whole row takes the click, and it never
+    takes focus."""
+
+    _MARK_W = 14  # the drawn mark's width; the text starts after it and a gap
+    _GAP = 8
+    _BOLD = False
+    _PT = LABEL_PT
+
+    def __init__(self, text: str):
+        super().__init__(text)
+        self.setFont(QFont(FONT, self._PT, QFont.Bold if self._BOLD else QFont.Normal))
+        self.setFocusPolicy(Qt.NoFocus)
+        self.setCursor(Qt.PointingHandCursor)
+
+    def sizeHint(self):  # noqa: N802 - Qt's name
+        fm = QFontMetrics(self.font())
+        w = self._MARK_W + self._GAP + fm.horizontalAdvance(self.text()) + 2
+        return QSize(w, max(fm.height(), 16) + 4)
+
+    def minimumSizeHint(self):  # noqa: N802 - Qt's name
+        return self.sizeHint()
+
+    def hitButton(self, pos) -> bool:  # noqa: N802 - Qt's name
+        return self.rect().contains(pos)
+
+    def _text_color(self) -> str:
+        return VALUE_COLOR if self.isEnabled() else DIM
+
+    def paintEvent(self, _event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        self._paint_mark(p, (self.height() - 16) / 2)
+        p.setPen(QColor(self._text_color()))
+        p.setFont(self.font())
+        x = self._MARK_W + self._GAP
+        p.drawText(QRectF(x, 0, self.width() - x, self.height()), Qt.AlignVCenter, self.text())
+
+    def _paint_mark(self, p: QPainter, top: float) -> None:
+        on, live = self.isChecked(), self.isEnabled()
+        fill = (ACCENT if live else DIM) if on else FIELD
+        p.setPen(QPen(QColor(fill if on else (EDGE if live else DIM)), 1))
+        p.setBrush(QColor(fill))
+        p.drawRoundedRect(QRectF(0.5, top + 1.5, 13, 13), 3, 3)
+        if on:
+            p.setPen(QPen(QColor(DARK), 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            p.drawPolyline([QPointF(3.5, top + 8), QPointF(6, top + 10.5), QPointF(10.5, top + 5)])
+
+
+class ToolSwitch(_PaintedCheck):
+    """A tool's on/off switch, heading its card in Settings: a small toggle, then its name.
+    Disabled, it keeps its look (the last tool on is locked, not off)."""
+
+    _MARK_W = 28
+    _BOLD = True
+    _PT = LABEL_PT + 1
+
+    def _text_color(self) -> str:
+        return VALUE_COLOR
+
+    def _paint_mark(self, p: QPainter, top: float) -> None:
+        on = self.isChecked()
+        p.setPen(QPen(QColor(ACCENT if on else EDGE), 1))
+        p.setBrush(QColor(ACCENT if on else FIELD))
+        p.drawRoundedRect(QRectF(0.5, top + 0.5, 27, 15), 7.5, 7.5)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(DARK if on else LABEL_COLOR))
+        p.drawEllipse(QRectF(15 if on else 3, top + 3, 10, 10))
+
+
 def setting_box(text: str, checked: bool, on_change: Callable[[bool], None]) -> QCheckBox:
-    """A checkbox for the Settings window: each click applies at once; it never takes focus."""
-    box = QCheckBox(text)
+    """A checkbox for the Settings window: each click applies at once."""
+    box = _PaintedCheck(text)
     box.setChecked(checked)
-    box.setFocusPolicy(Qt.NoFocus)
+    box.toggled.connect(on_change)
+    return box
+
+
+def tool_switch(text: str, checked: bool, on_change: Callable[[bool], None]) -> QCheckBox:
+    """A tool's on/off switch for the Settings window: each click applies at once."""
+    box = ToolSwitch(text)
+    box.setChecked(checked)
     box.toggled.connect(on_change)
     return box
 

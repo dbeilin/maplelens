@@ -1694,7 +1694,7 @@ class _Stops(_Quiet):
 def switches(qt_box):
     from PySide6.QtWidgets import QLabel
 
-    from maplelens.settings_window import SettingsWindow
+    from maplelens.settings_window import SettingsWindow, ToolSection
 
     pages = []
     for title in ("EXP", "Path", "Class", "Quests"):
@@ -1704,7 +1704,7 @@ def switches(qt_box):
     qt_box.add_footer(footer, 0)
     qt_box.set_footer_shown(True)
     sections = {t: QLabel(t) for t in ("Path", "Class")}
-    window = SettingsWindow(list(sections.items()))
+    window = SettingsWindow([ToolSection(t, True, w) for t, w in sections.items()])
     settings, saves = {}, []
     exp, path, cls, quest = _Stops(), _Stops(), _Stops(), _Stops()
     save = lambda: saves.append(dict(settings))  # noqa: E731
@@ -1765,3 +1765,22 @@ def test_tools_saved_off_start_hidden(qt_box):
     assert not qt_box._tab_buttons[3].isVisibleTo(qt_box)
     assert qt_box._tab_buttons[2].isVisibleTo(qt_box)
     assert not cls.can_go and not quest.can_go  # Path saved off: no trips from the start
+
+
+def test_tool_sections_follow_the_tabs_with_each_tools_own_settings(qt_box):
+    from PySide6.QtWidgets import QLabel
+
+    class Tool:
+        def __init__(self, title, has):
+            self.title = title
+            if has:
+                self.settings_section = lambda: QLabel(title)
+
+    tools = [Tool("EXP", False), Tool("Path", True), Tool("Class", True), Tool("Quests", False)]
+    got = app.tool_sections(tools, {"class_on": False})
+    assert [(t.title, t.on, t.body is not None) for t in got] == [
+        ("EXP", True, False),
+        ("Path", True, True),
+        ("Class", False, True),
+        ("Quests", True, False),
+    ]

@@ -26,7 +26,7 @@ from maplelens import capture, update, update_mac
 from maplelens.overlay import ABOUT, MENU_MARK, Box, Layer
 from maplelens.reader import InlineReader, ProcessReader, Rect
 from maplelens.readers import due, found, glyphs, ocr, quest_window
-from maplelens.settings_window import GeneralSection, SettingsWindow, sections
+from maplelens.settings_window import GeneralSection, SettingsWindow, ToolSection
 from maplelens.store import data_dir, load_settings, save_settings
 from maplelens.tools.class_helper import data as class_data
 from maplelens.tools.class_helper.ui import ClassHelperTool
@@ -222,13 +222,8 @@ def update_tools(  # noqa: PLR0913, PLR0917 - one per tool plus the frame; a bun
     box.set_tab_dot(2, cls.dot)
 
 
-# Each tool's switch in Settings, in the tabs' order (build_box's list): index = tab index
-TOOL_SWITCHES = (
-    ("exp_on", "EXP tab"),
-    ("path_on", "Path tab"),
-    ("class_on", "Class tab"),
-    ("quests_on", "Quests tab"),
-)
+# Each tool's on/off setting, in the tabs' order (build_box's list): index = tab index
+TOOL_KEYS = ("exp_on", "path_on", "class_on", "quests_on")
 # The game windows only one tool reads: left unread while it's off
 _WINDOWS = {
     "class_on": frozenset({"stats", "skills"}),
@@ -258,6 +253,19 @@ def unread(settings: dict) -> frozenset[str]:
     return frozenset().union(*off)
 
 
+def tool_sections(tools: list, settings: dict) -> list[ToolSection]:
+    """Each tool's card for the Settings window, in the tabs' order: its switch, and its own
+    settings when it has any."""
+    return [
+        ToolSection(
+            t.title,
+            tool_on(settings, key),
+            t.settings_section() if hasattr(t, "settings_section") else None,
+        )
+        for t, key in zip(tools, TOOL_KEYS, strict=True)
+    ]
+
+
 class ToolSwitches:
     """Turning a tool off and on in Settings, live: its tab, what it draws, its section.
 
@@ -276,13 +284,13 @@ class ToolSwitches:
         """At start: hide the tabs, and grey the sections (headed `titles`, in the tabs'
         order), of the tools saved off."""
         self._window, self._titles = window, titles
-        for i, (key, _) in enumerate(TOOL_SWITCHES):
+        for i, key in enumerate(TOOL_KEYS):
             if not tool_on(self._settings, key):
                 self._show(i, False)
         self._tell_can_go()
 
     def set(self, index: int, on: bool, now: float) -> None:
-        key = TOOL_SWITCHES[index][0]
+        key = TOOL_KEYS[index]
         if tool_on(self._settings, key) == on:
             return
         self._settings[key] = on
@@ -897,7 +905,7 @@ class Tick:
         tools = (self.exp, self.path, self.cls, self.quest)
         return tuple(
             t if tool_on(self.settings, key) else OFF
-            for t, (key, _) in zip(tools, TOOL_SWITCHES, strict=True)
+            for t, key in zip(tools, TOOL_KEYS, strict=True)
         )
 
     def run(self, now: float) -> None:
@@ -1038,15 +1046,14 @@ def main() -> int:
     add_build_menu(box, cls_tool)
     updates = update_check(box, settings, save, seen, time.time())
     general = GeneralSection()
-    switches = ToolSwitches(settings, save, box, tool, path_tool, cls_tool, quest_tool)
-    general.add_tool_switches(
-        [label for _, label in TOOL_SWITCHES],
-        [settings[key] for key, _ in TOOL_SWITCHES],
-        lambda i, on: switches.set(i, on, time.time()),
-    )
     if updates is not None:
         general.add_updates(settings["update_check"], updates.set_auto, updates.check_now)
-    settings_window = SettingsWindow(sections(general, tools))  # held: the menu links weakly
+    switches = ToolSwitches(settings, save, box, tool, path_tool, cls_tool, quest_tool)
+    settings_window = SettingsWindow(  # held: the menu links to it weakly
+        tool_sections(tools, settings),
+        lambda i, on: switches.set(i, on, time.time()),
+        general,
+    )
     switches.apply(settings_window, [t.title for t in tools])
     add_settings(box, settings_window)
     tray = make_tray(box, ICON, available=tray_available())  # held, or it leaves the tray
