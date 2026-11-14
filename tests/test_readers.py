@@ -118,6 +118,9 @@ EXPECTED_POS = {
     "pos_tunnel_2560x1440_100.png": (0.493, 0.446),  # Tree Tunnel; a dot painted out
     # Henesys, Mac fullscreen (1.107x, blurred): the dot is a yellow roof's size there
     "pos_henesys_3024x1700_100.png": (0.503, 0.693),
+    # The Burnt Land II, Mac fullscreen: the frame's right line blurs into the column
+    # before the one-px gap, which then fails WHITE
+    "pos_burnt2_3024x1700_100.png": (0.594, 0.641),
     "pos_bar_2560x1440_100.png": None,  # minimap minimized to its bar
     "pos_covered_2560x1440_100.png": None,  # inventory window over the map area
     "pos_nominimap_1920x1080_100.png": None,  # game scene, no minimap
@@ -660,6 +663,7 @@ def test_read_view_npc_markers(name, n):
         ("pos_e_2560x1440_100.png", 3),  # Lith Harbor: the sea isn't a spiral
         ("pos_f_2560x1440_100.png", 5),  # Perion: 2 more cut by the window's edge
         ("pos_g_2560x1440_100.png", 2),  # The Forest of Wisdom
+        ("pos_burnt2_3024x1700_100.png", 2),  # The Burnt Land II, Mac fullscreen
     ],
 )
 def test_read_view_portal_spirals(name, n):
