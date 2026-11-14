@@ -866,10 +866,12 @@ class Tick:
 
 
 def hide_from_dock() -> None:
-    """Mac: no Dock icon, only the menu bar's (make_tray), even run from source."""
+    """Mac: no Dock icon, only the menu bar's (make_tray), even run from source; and hover
+    that works with the game in front."""
     from maplelens import overlay_mac  # AppKit only exists on the Mac
 
     overlay_mac.make_accessory()
+    overlay_mac.forward_hover()
 
 
 def _start_qt() -> QApplication:
