@@ -23,6 +23,24 @@ DEFAULTS = {
     "quests_expanded": None,  # the tracked quest shown open in the Quests tab
     "quests_closest": {},  # quest id (as text) -> True: Closest, False: Best; once switched
     "quest_rewards_open": False,  # the Quests tab's reward details shown, for every quest
+    # the tools, each turned on or off in Settings
+    "exp_on": True,
+    "path_on": True,
+    "class_on": True,
+    "quests_on": True,
+}
+
+
+def _is_bool(value: object) -> bool:
+    return isinstance(value, bool)
+
+
+# key -> a check of a saved value; one that fails it loads as its default
+CHECKS = {
+    "exp_on": _is_bool,
+    "path_on": _is_bool,
+    "class_on": _is_bool,
+    "quests_on": _is_bool,
 }
 
 
@@ -43,6 +61,15 @@ def load_settings(path: Path) -> dict:
         return settings
     if isinstance(saved, dict):
         settings.update(saved)
+    return clean(settings)
+
+
+def clean(settings: dict) -> dict:
+    """Put back the default of each checked key whose value is wrong: a hand edit, or an
+    old version's file, never breaks startup. Keys without a check are left as they are."""
+    for key, ok in CHECKS.items():
+        if not ok(settings[key]):
+            settings[key] = copy.deepcopy(DEFAULTS[key])
     return settings
 
 
