@@ -18,8 +18,8 @@
     "training": [
       {"map_id": "000000001", "from_level": 10, "to_level": 15, "mobs": [8, 12]},
       {"map_id": null, "name": "A map not in maps.json", "from_level": 15, "to_level": 21, "mobs": [15, 18]},
-      {"map_id": null, "name": "Third", "from_level": 10, "to_level": 14, "mobs": [1, 2]},
-      {"map_id": null, "name": "Fourth", "from_level": 11, "to_level": 13, "mobs": [1, 2]},
+      {"map_id": "000000002", "name": "Third", "from_level": 10, "to_level": 14, "mobs": [1, 2]},
+      {"map_id": "000000003", "name": "Fourth", "from_level": 11, "to_level": 13, "mobs": [1, 2]},
       {"map_id": null, "name": "Fifth", "from_level": 12, "to_level": 13, "mobs": [1, 2]}
     ],
     "builds": [

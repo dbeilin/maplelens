@@ -149,6 +149,17 @@ def test_check_bundle_counts_templates_and_minimaps(tmp_path):
         build_installer.check_bundle(src, bundle, app)
 
 
+def test_check_bundle_counts_map_pictures(tmp_path):
+    src, bundle, app = tmp_path / "src", tmp_path / "bundle", tmp_path / "app"
+    _pngs(src, ["data/map_pictures/a.webp"])
+    _pngs(bundle, ["data/map_pictures/a.webp"])
+    _pngs(app, build_installer.REQUIRED)
+    build_installer.check_bundle(src, bundle, app)
+    (bundle / "data/map_pictures/a.webp").unlink()
+    with pytest.raises(SystemExit, match="map_pictures"):
+        build_installer.check_bundle(src, bundle, app)
+
+
 def test_check_bundle_needs_the_qt_windows_plugin(tmp_path):
     # the self-check opens no window, so it can't notice the box would never show
     src, bundle, app = tmp_path / "src", tmp_path / "bundle", tmp_path / "app"
