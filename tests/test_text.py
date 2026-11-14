@@ -6,8 +6,22 @@ from maplelens.tools.exp_meter.text import (
     box_lines,
     format_duration,
     format_last,
+    pin_text,
     short_name,
 )
+
+
+def test_pin_text_values():
+    assert pin_text(Rate(12480, 0.42, 137), False) == ("25.20%/h · Lvl in 2h 17m", False)
+    assert pin_text(Rate(12480, 0.42, None), False) == ("25.20%/h · Lvl in —", False)
+
+
+def test_pin_text_states():
+    assert pin_text(None, False) == ("Measuring…", False)
+    assert pin_text(Rate(1, 0.1, 5, early=True), False) == ("Measuring…", False)
+    assert pin_text(Rate(1, 0.1, 5, paused=True), False) == ("Paused", False)
+    assert pin_text(Rate(1, 0.1, 5, paused=True), False, unread=True) == ("Can't read bar", True)
+    assert pin_text(None, True) == ("Waiting for game", False)
 
 
 def test_box_lines_values():
