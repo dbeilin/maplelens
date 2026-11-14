@@ -139,8 +139,7 @@ def test_history_button_on_exp_tab(monkeypatch, tmp_path):
     QApplication.instance() or QApplication([])
     tool = ExpMeterTool(dict(DEFAULTS, boxes={}), open_db(tmp_path / "h.db"))
     assert tool.title == "EXP"
-    (button,) = tool.tab.findChildren(QPushButton)
-    assert button.text() == "History"
+    (button,) = [b for b in tool.tab.findChildren(QPushButton) if b.text() == "History"]
     button.click()
     assert tool._history.isVisible()
     tool._history.close()
@@ -207,3 +206,62 @@ def test_history_map_cell_short_name_full_tooltip(monkeypatch, tmp_path):
     texts = [w.text() for w in win.findChildren(QLabel)]
     assert "Best for Hero, Lv 44 (±3)" in texts
     assert "36,000 EXP/h" in texts
+
+
+def _tool(monkeypatch, tmp_path, settings=None, **kw):
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    from maplelens.tools.exp_meter.ui import ExpMeterTool
+
+    QApplication.instance() or QApplication([])
+    return ExpMeterTool(settings or dict(DEFAULTS, boxes={}), open_db(tmp_path / "h.db"), **kw)
+
+
+def _pin_button(tool):
+    from PySide6.QtWidgets import QPushButton
+
+    (button,) = [b for b in tool.tab.findChildren(QPushButton) if b.text() in {"Pin", "Unpin"}]
+    return button
+
+
+def test_pin_button_toggles_setting_label_and_footer(monkeypatch, tmp_path):
+    settings, saves, shown = dict(DEFAULTS, boxes={}), [], []
+    tool = _tool(
+        monkeypatch, tmp_path, settings, save=lambda: saves.append(1), show_pin=shown.append
+    )
+    pin = _pin_button(tool)
+    assert not tool.pinned and pin.text() == "Pin" and pin.property("kind") == "secondary"
+    pin.click()
+    assert settings["pin_exp"] and tool.pinned and pin.text() == "Unpin"
+    assert shown == [True] and saves == [1]
+    pin.click()
+    assert not settings["pin_exp"] and not tool.pinned and pin.text() == "Pin"
+    assert shown == [True, False] and saves == [1, 1]
+
+
+def test_pinned_setting_is_read_at_start(monkeypatch, tmp_path):
+    tool = _tool(monkeypatch, tmp_path, dict(DEFAULTS, boxes={}, pin_exp=True))
+    assert tool.pinned and _pin_button(tool).text() == "Unpin"
+
+
+def test_pin_line_follows_the_tick_and_opens_the_tab(monkeypatch, tmp_path):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+
+    opened = []
+    tool = _tool(monkeypatch, tmp_path, open_tab=lambda: opened.append(1))
+    tool.update(None, None, 1.0)
+    assert tool.pin_line.text() == "Waiting for game"
+    tool.update(Reading(2.0, ExpValue(1000, 10), 50, "Mage", "Ant Tunnel"), None, 2.0)
+    assert tool.pin_line.text() == "Measuring…"
+    QTest.mouseClick(tool.pin_line, Qt.LeftButton)
+    assert opened == [1]
+
+
+def test_longest_pin_line_fits_the_tab(monkeypatch, tmp_path):
+    from maplelens import overlay
+
+    tool = _tool(monkeypatch, tmp_path)
+    tool.pin_line.set_text("100.00%/h · Lvl in 99h 59m", False)
+    assert tool.pin_line.sizeHint().width() <= overlay.TAB_W

@@ -38,6 +38,7 @@ from maplelens.tools.exp_meter.text import (
     box_lines,
     format_duration,
     format_last,
+    pin_text,
     short_name,
 )
 
@@ -131,9 +132,54 @@ class HistoryWindow(QWidget):
         super().showEvent(event)
 
 
+class PinLine(QWidget):
+    """The pinned line under the other tabs: "EXP", the rate and time to level, and a
+    yellow angle that goes to the EXP tab."""
+
+    def __init__(self, on_click: Callable[[], None]):
+        super().__init__()
+        self._on_click = on_click
+        self.setCursor(Qt.PointingHandCursor)
+        self._text = text_label("", LABEL_PT, VALUE_COLOR)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 4, 0, 0)
+        row.setSpacing(6)
+        row.addWidget(text_label("EXP", LABEL_PT, LABEL_COLOR))
+        row.addWidget(self._text)
+        row.addStretch()
+        row.addWidget(text_label("\u203a", LABEL_PT + 2, ACCENT, bold=True))  # as a Row's
+        self.hide()  # until the box shows it
+
+    def set_text(self, text: str, accent: bool) -> None:
+        self._text.setText(text)
+        self._text.setStyleSheet(f"color: {ACCENT if accent else VALUE_COLOR};")
+
+    def text(self) -> str:
+        return self._text.text()
+
+    # It takes its press, as a button does, so the box doesn't start a drag.
+    def mousePressEvent(self, event):
+        event.setAccepted(event.button() == Qt.LeftButton)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.rect().contains(event.position().toPoint()):
+            self._on_click()
+
+
 class ExpMeterTool:
-    def __init__(self, settings: dict, conn: sqlite3.Connection, job_line: JobLine = lambda j: {j}):
+    def __init__(  # noqa: PLR0913 - the callbacks are keywords, wired by the app
+        self,
+        settings: dict,
+        conn: sqlite3.Connection,
+        job_line: JobLine = lambda j: {j},
+        *,
+        save: Callable[[], None] = lambda: None,
+        show_pin: Callable[[bool], None] = lambda _on: None,
+        open_tab: Callable[[], None] = lambda: None,
+    ):
         self._conn = conn
+        self._settings, self._save_settings, self._show_pin = settings, save, show_pin
+        self.pin_line = PinLine(open_tab)  # the box's footer: on every tab but this one
         self._meter = ExpMeter(settings["idle_cutoff_s"], settings["jump_factor"])
         self._last_flush: float | None = None
         self._exp_seen: float | None = None  # last tick the bar was read, or the game was gone
@@ -144,13 +190,33 @@ class ExpMeterTool:
         self._lines = QVBoxLayout(self.tab)
         self._lines.setContentsMargins(0, 4, 0, 0)
         self._lines.setSpacing(0)
-        self._button_row = secondary_button("History", self._show_history)
+        self._pin = secondary_button("", self._toggle_pin)
+        self._label_pin()
+        self._button_row = QWidget()
+        buttons = QHBoxLayout(self._button_row)
+        buttons.setContentsMargins(0, 0, 0, 0)
+        buttons.setSpacing(8)
+        buttons.addWidget(secondary_button("History", self._show_history))
+        buttons.addWidget(self._pin)
         self._shape: list[list[int]] | None = None  # values per row of what's shown
         self._texts: list[QLabel] = []
         self._show(box_lines(None, None, True))
 
     def set_tab_w(self, width: int) -> None:
         self.tab.setFixedWidth(width)
+
+    @property
+    def pinned(self) -> bool:
+        return bool(self._settings["pin_exp"])
+
+    def _label_pin(self) -> None:
+        self._pin.setText("Unpin" if self.pinned else "Pin")
+
+    def _toggle_pin(self) -> None:
+        self._settings["pin_exp"] = not self.pinned
+        self._label_pin()
+        self._save_settings()
+        self._show_pin(self.pinned)
 
     def _show(self, rows: list[list[Column]]) -> None:
         texts = [t for row in rows for label, values in row for t in (label, *values)]
@@ -210,8 +276,10 @@ class ExpMeterTool:
         if r is None or r.exp is not None or self._exp_seen is None:
             self._exp_seen = now
         unread = now - self._exp_seen > _UNREAD_S
-        self._show(box_lines(self._meter.rate(now), self._meter.session(), r is None, unread))
+        rate = self._meter.rate(now)
+        self._show(box_lines(rate, self._meter.session(), r is None, unread))
         self._texts[0].setStyleSheet(f"color: {ACCENT if unread else LABEL_COLOR};")
+        self.pin_line.set_text(*pin_text(rate, r is None, unread))
 
     def shutdown(self, now: float) -> None:
         self._meter.close(now)
