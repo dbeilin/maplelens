@@ -1640,3 +1640,112 @@ def test_a_loading_screen_leaves_the_box_where_the_bars_put_it(hide, game_found,
     tick.reader = types.SimpleNamespace(ask=lambda job: None, take=lambda: None)
     tick.run(3.0)  # an answer still on its way
     assert box.pos() == at
+
+
+def test_a_tick_skips_the_tools_turned_off(hide, game_found):
+    box, layer, _, shown = hide
+    tick, exp = _tick(box, layer, shown)
+    tick.settings.update(exp_on=False, class_on=False)
+    tick.run(5.0)
+    assert exp.updates == [] and tick.cls.updates == []
+    assert tick.path.updates == [(READING, game_found, 5.0)]
+    assert tick.quest.updates == [(READING, game_found, 5.0)]
+    tick.settings["exp_on"] = True
+    tick.run(6.0)
+    assert exp.updates == [(READING, game_found, 6.0)]
+
+
+def test_a_tick_doesnt_read_an_off_tools_windows(hide, game_found, monkeypatch):
+    box, layer, _, shown = hide
+    dues = []
+    monkeypatch.setattr(reader, "read_all", lambda f, now, due=None: dues.append(due) or READING)
+    tick, _ = _tick(box, layer, shown)
+    tick.settings.update(class_on=False, quests_on=False)
+    for i in range(8):  # two turns of every closed window
+        tick.run(float(i))
+    assert not any({"stats", "skills", "quest", "tracker"} & set(d) for d in dues)
+
+
+def test_quests_off_never_switches_the_box_to_quests():
+    box = _FocusBox(1)
+    f = app.QuestFocus(box, 3)
+    for _ in range(3):  # a quest window open in the game; Quests is off, so OFF stands in
+        app.update_tools(box, _Quiet(), _Quiet(), _Quiet(), app.OFF, f, "r", None, 0.0, set())
+    assert box.selects == []
+
+
+class _Stops(_Quiet):
+    def __init__(self):
+        self.calls = []
+        self.arrow = types.SimpleNamespace(hide=lambda: self.calls.append("arrow hidden"))
+
+    def stop(self, *now):
+        self.calls.append(("stop", *now))
+
+    def hide_marks(self):
+        self.calls.append("marks hidden")
+
+
+@pytest.fixture
+def switches(qt_box):
+    from PySide6.QtWidgets import QLabel
+
+    from maplelens.settings_window import SettingsWindow
+
+    pages = []
+    for title in ("EXP", "Path", "Class", "Quests"):
+        pages.append(QLabel(title))
+        qt_box.add_tab(title, pages[-1])
+    footer = QLabel("pin")
+    qt_box.add_footer(footer, 0)
+    qt_box.set_footer_shown(True)
+    sections = {t: QLabel(t) for t in ("Path", "Class")}
+    window = SettingsWindow(list(sections.items()))
+    settings, saves = {}, []
+    exp, path, cls = _Stops(), _Stops(), _Stops()
+    sw = app.ToolSwitches(settings, lambda: saves.append(dict(settings)), qt_box, exp, path, cls)
+    sw.apply(window, ["EXP", "Path", "Class", "Quests"])
+    return types.SimpleNamespace(
+        sw=sw, box=qt_box, settings=settings, saves=saves, exp=exp, path=path, cls=cls,
+        sections=sections, footer=footer,
+    )  # fmt: skip
+
+
+def test_turning_path_off_ends_the_trip_and_greys_its_section(switches):
+    s = switches
+    s.box.select(1)
+    s.sw.set(1, False, 9.0)
+    assert s.settings["path_on"] is False and s.saves[-1]["path_on"] is False
+    assert s.path.calls == [("stop",), "arrow hidden"]
+    assert not s.box._tab_buttons[1].isVisibleTo(s.box) and s.box.current == 0
+    assert not s.sections["Path"].isEnabled()
+    s.sw.set(1, True, 10.0)
+    assert s.box._tab_buttons[1].isVisibleTo(s.box) and s.sections["Path"].isEnabled()
+
+
+def test_turning_exp_off_saves_it_and_hides_the_pinned_line(switches):
+    s = switches
+    s.box.select(2)
+    assert s.footer.isVisibleTo(s.box)
+    s.sw.set(0, False, 9.0)
+    assert s.exp.calls == [("stop", 9.0)]
+    assert not s.footer.isVisibleTo(s.box)
+    s.sw.set(0, True, 10.0)
+    assert s.footer.isVisibleTo(s.box)  # pin_exp is still on
+
+
+def test_turning_class_off_hides_its_marks(switches):
+    switches.sw.set(2, False, 9.0)
+    assert switches.cls.calls == ["marks hidden"]
+
+
+def test_tools_saved_off_start_hidden(qt_box):
+    from PySide6.QtWidgets import QLabel
+
+    for title in ("EXP", "Path", "Class", "Quests"):
+        qt_box.add_tab(title, QLabel(title))
+    settings = {"quests_on": False}
+    sw = app.ToolSwitches(settings, lambda: None, qt_box, _Stops(), _Stops(), _Stops())
+    sw.apply(None, [])
+    assert not qt_box._tab_buttons[3].isVisibleTo(qt_box)
+    assert qt_box._tab_buttons[2].isVisibleTo(qt_box)

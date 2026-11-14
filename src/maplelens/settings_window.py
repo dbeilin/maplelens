@@ -26,6 +26,28 @@ class GeneralSection(QWidget):
         self._rows = QVBoxLayout(self)
         self._rows.setContentsMargins(0, 0, 0, 0)
 
+    def add_tool_switches(
+        self, labels: list[str], states: list[bool], on_change: Callable[[int, bool], None]
+    ) -> None:
+        """A checkbox per tool, in the tabs' order; `on_change` gets its index and state.
+        The last one still on can't be turned off: a box with no tabs shows nothing."""
+        self._switches = [
+            setting_box(t, on, lambda _: None) for t, on in zip(labels, states, strict=True)
+        ]
+        for i, box in enumerate(self._switches):
+            box.toggled.connect(lambda on, i=i: self._switched(i, on, on_change))
+            self._rows.addWidget(box)
+        self._guard_last()
+
+    def _switched(self, i: int, on: bool, on_change: Callable[[int, bool], None]) -> None:
+        self._guard_last()
+        on_change(i, on)
+
+    def _guard_last(self) -> None:
+        checked = [b for b in self._switches if b.isChecked()]
+        for b in self._switches:
+            b.setEnabled(not (len(checked) == 1 and b.isChecked()))
+
     def add_updates(
         self, auto: bool, set_auto: Callable[[bool], None], check_now: Callable[[], None]
     ) -> None:
@@ -76,3 +98,8 @@ class SettingsWindow(FloatingWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(scroll)
         self.resize(380, 460)
+
+    def set_section_enabled(self, title: str, on: bool) -> None:
+        """Grey out a section (its tool is off), or bring it back; a missing one is fine."""
+        for part in self._sections.get(title, ()):
+            part.setEnabled(on)

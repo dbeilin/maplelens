@@ -271,3 +271,12 @@ class ExpMeterTool:
     def shutdown(self, now: float) -> None:
         self._meter.close(now)
         self._save(now, flush_open=False)
+
+    def stop(self, now: float) -> None:
+        """Turned off in Settings: save as on quit, and start afresh when it's on again (the
+        session too, as after a restart)."""
+        self.shutdown(now)
+        self._meter = ExpMeter(self._settings["idle_cutoff_s"], self._settings["jump_factor"])
+        self._last_flush = self._exp_seen = None
+        self._show(box_lines(None, None, True))
+        self.pin_line.set_text(*pin_text(None, True))

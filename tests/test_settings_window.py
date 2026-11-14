@@ -145,3 +145,50 @@ def test_sections_are_general_then_each_tool_with_one(qt):
     got = sections(general, [Tool("EXP", False), Tool("Class", True)])
     assert [t for t, _ in got] == ["General", "Class"]
     assert got[0][1] is general
+
+
+def _switches(states):
+    from PySide6.QtWidgets import QCheckBox
+
+    from maplelens.settings_window import GeneralSection
+
+    calls = []
+    general = GeneralSection()
+    general.add_tool_switches(["A", "B", "C"], states, lambda i, on: calls.append((i, on)))
+    return general, general.findChildren(QCheckBox), calls
+
+
+def test_a_tool_switch_reports_its_index(qt):
+    _general, (_a, b, c), calls = _switches([True, True, True])
+    b.setChecked(False)
+    c.setChecked(False)
+    assert calls == [(1, False), (2, False)]
+
+
+def test_the_last_tool_on_cant_be_turned_off(qt):
+    _general, (a, b, c), _ = _switches([True, True, False])
+    assert a.isEnabled() and b.isEnabled() and c.isEnabled()
+    b.setChecked(False)
+    assert not a.isEnabled()  # the only one left on
+    assert b.isEnabled() and c.isEnabled()
+    c.setChecked(True)
+    assert a.isEnabled()
+
+
+def test_the_last_tool_on_is_locked_from_the_start(qt):
+    _general, (a, b, _c), _ = _switches([False, True, False])
+    assert not b.isEnabled() and a.isEnabled()
+
+
+def test_a_section_greys_out(qt):
+    from PySide6.QtWidgets import QLabel
+
+    from maplelens.settings_window import SettingsWindow
+
+    section = QLabel("p")
+    win = SettingsWindow([("Path", section)])
+    win.set_section_enabled("Path", False)
+    assert not section.isEnabled()
+    win.set_section_enabled("Path", True)
+    assert section.isEnabled()
+    win.set_section_enabled("Quests", False)  # no section: nothing to grey
