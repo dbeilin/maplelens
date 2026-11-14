@@ -11,9 +11,9 @@ from shiboken6 import delete, isValid
 
 from maplelens.overlay import (
     ACCENT,
+    BOX_EDGE,
     BOX_FILL,
     CHIP_BG,
-    EDGE,
     FIELD,
     FONT,
     HERE_BG,
@@ -169,7 +169,8 @@ class SpotCard(QWidget):
     its monsters. Never takes the game's focus or a click."""
 
     def __init__(self):
-        flags = Qt.Tool | Qt.FramelessWindowHint
+        # Clicks go through to the game: the attribute alone still lets the OS send them here.
+        flags = Qt.Tool | Qt.FramelessWindowHint | Qt.WindowTransparentForInput
         if sys.platform != "darwin":  # on the Mac, native_setup makes it a panel that does both
             flags |= Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus
         super().__init__(None, flags)
@@ -250,7 +251,7 @@ class SpotCard(QWidget):
     def paintEvent(self, _event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        p.setPen(QColor(EDGE))
+        p.setPen(QColor(*BOX_EDGE))
         p.setBrush(QColor(*BOX_FILL))
         p.drawRoundedRect(QRectF(0.5, 0.5, self.width() - 1, self.height() - 1), 8, 8)
 

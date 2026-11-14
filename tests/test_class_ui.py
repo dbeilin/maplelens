@@ -692,6 +692,7 @@ def test_the_card_never_takes_focus_or_clicks(make):
     c = make()._card
     assert c.testAttribute(Qt.WA_ShowWithoutActivating)
     assert c.testAttribute(Qt.WA_TransparentForMouseEvents)
+    assert c.windowFlags() & Qt.WindowTransparentForInput
     if sys.platform != "darwin":
         assert c.windowFlags() & Qt.WindowDoesNotAcceptFocus
 
