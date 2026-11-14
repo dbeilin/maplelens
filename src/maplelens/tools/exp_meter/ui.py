@@ -201,6 +201,7 @@ class ExpMeterTool:
         self._shape: list[list[int]] | None = None  # values per row of what's shown
         self._texts: list[QLabel] = []
         self._show(box_lines(None, None, True))
+        self.pin_line.set_text(*pin_text(None, True))  # never blank, even before a tick
 
     def set_tab_w(self, width: int) -> None:
         self.tab.setFixedWidth(width)
@@ -215,8 +216,8 @@ class ExpMeterTool:
     def _toggle_pin(self) -> None:
         self._settings["pin_exp"] = not self.pinned
         self._label_pin()
+        self._show_pin(self.pinned)  # first: a failed save (a locked file) loses only that
         self._save_settings()
-        self._show_pin(self.pinned)
 
     def _show(self, rows: list[list[Column]]) -> None:
         texts = [t for row in rows for label, values in row for t in (label, *values)]

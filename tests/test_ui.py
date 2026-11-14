@@ -265,3 +265,20 @@ def test_longest_pin_line_fits_the_tab(monkeypatch, tmp_path):
     tool = _tool(monkeypatch, tmp_path)
     tool.pin_line.set_text("100.00%/h · Lvl in 99h 59m", False)
     assert tool.pin_line.sizeHint().width() <= overlay.TAB_W
+
+
+def test_pin_line_is_never_blank_before_the_first_tick(monkeypatch, tmp_path):
+    assert _tool(monkeypatch, tmp_path).pin_line.text() == "Waiting for game"
+
+
+def test_pin_shows_the_line_even_if_saving_fails(monkeypatch, tmp_path):
+    import pytest
+
+    def locked():
+        raise OSError("settings.json is locked")
+
+    shown = []
+    tool = _tool(monkeypatch, tmp_path, save=locked, show_pin=shown.append)
+    with pytest.raises(OSError):
+        tool._toggle_pin()
+    assert shown == [True]  # the line follows the button; only the save is lost
