@@ -53,7 +53,7 @@ T1 keys + validation ─ T2 empty window ─┬─ T3 move update + marks items
         │                             │                       │
  T7 arrow size + show          T9 build per job      T10 state machine   T11 meter carry/split
         │                                                     │                   │
- T8 steady                                                    └─ T12 manual mode ─┘
+ T8 colour                                                    └─ T12 manual mode ─┘
                                                                    + EXP section
                                                               │
                                                       T13 store sessions
@@ -212,27 +212,26 @@ a slider and a real `_Arrow` as the preview.
 **Dependencies:** T2. **Files:** `path_arrow/ui.py`, `store.py`, `tests/test_path_ui.py`,
 `tests/test_store.py`. **Scope:** S
 
-### Task T8: keep the arrow steady
+### Task T8: arrow colour (was: keep the arrow steady)
 
-**Description:** `arrow_steady` (default on). A pure `held(steady, last_seen, now)`, and
-`_place_arrow` keeps the arrow when a frame has no position, the map is the same and the trip
-still runs. A frame with a position and no target hides it at once, as today.
+**Description:** Built first as `arrow_steady` (a 2 s hold through missed frames); Daniel
+tried it and saw no blinking to fix, so it was taken out, with Checkpoint B's flicker test.
+In its place: `arrow_color`, one of six `ARROW_COLORS` swatches in the Path card, validated
+in `clean`. `_Arrow` paints in its `color`; the preview follows.
 
 **Acceptance criteria:**
-- [ ] A missed frame leaves the arrow up to 2 s; past that it hides.
-- [ ] A map change or Stop hides it at once. Steady off behaves as today.
+- [x] A swatch recolours the arrow and the preview live, and is saved.
+- [x] A saved colour that isn't offered loads as yellow.
 
-**Verification:** `uv run pytest tests/test_path_ui.py`
+**Verification:** `uv run pytest tests/test_path_ui.py tests/test_store.py`
 
-**Dependencies:** T7. **Files:** `path_arrow/ui.py`, `store.py`, `tests/test_path_ui.py`.
-**Scope:** S
+**Dependencies:** T7. **Files:** `path_arrow/ui.py`, `store.py`, `tests/test_path_ui.py`,
+`tests/test_store.py`. **Scope:** S
 
 ### Checkpoint B (before PR 2)
 
 - [ ] The four checks pass.
-- [ ] **By hand, the flicker test:** on a map where the arrow flickers today, compare steady on
-      and off. If it still flickers with steady on, stop: the cause isn't missed frames, and
-      the spec's open question needs answering first.
+- [ ] By hand: on a route, change the size and the colour and watch the arrow follow.
 
 ## Phase 3: build choice (PR 3)
 
@@ -382,7 +381,6 @@ settings are. Run the spec's whole by-hand list.
 |---|---|---|
 | Upstream moves fast (47 merges in six days) and keeps touching `app.py`'s menu and tick | Med | Branch from the newest `origin/main` when Phase 1 starts, and rebase at Checkpoint A. (#34 and #32, the earlier blockers, merged on 2026-11-09) |
 | Clicks don't register in a window that never takes focus (Windows `WindowDoesNotAcceptFocus`) | Low | T2's offscreen click test, then by hand at Checkpoint A. Fall back to letting Settings take focus while open, as `Box.allow_typing` does for the Path search |
-| The flicker isn't from missed frames | Med | Checkpoint B tests it before PR 2 opens |
 | The owner says no to manual mode, "Idle" or saved sessions in review | Med | Daniel chose to settle it in the PRs. Each is separable: manual mode is T10–T12, "Idle" is a few strings in T12, saving is Phase 5. Ask early in PR 4's description |
 | #79's session code moves upstream before Phase 4 | Med | T11 is small and touches only the session bits of `meter.py`; rebase before starting it |
 | Checkboxes and the slider misbehave in the Mac's non-activating panel | Med | Checkpoint A checks by hand. History never needed input, so this is untested ground. Fall back to a normal activating window for Settings |
@@ -400,7 +398,6 @@ settings are. Run the spec's whole by-hand list.
 Phase 1 (T1–T6) built on `feat/settings-window`, 2026-11-14: the four checks pass and the
 window was drawn offscreen; Checkpoint A's by-hand checks on Windows and the Mac are still to
 do. Phase 2 (T7–T8) built on `feat/arrow-options`, stacked on it,
-2026-11-14: steady mode holds only a miss `_why` has no reason for (a closed minimap still
-hides the arrow at once). Checkpoint B's flicker test in the game is still to do. Phases 1 and 2 were
+2026-11-14: show, size and colour; steady mode was built, tried and taken out. Phases 1 and 2 were
 refreshed against v0.6.3 on 2026-11-14, and Phases 4 and 5 rewritten on top of #79 the same
 day. Phase 3 waits for the `build-choice` decision.

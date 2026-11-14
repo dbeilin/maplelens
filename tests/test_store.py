@@ -70,8 +70,17 @@ def test_arrow_size_is_clamped_to_the_offered_sizes(tmp_path, saved, loaded):
     assert load_settings(p)["arrow_size"] == loaded
 
 
-def test_the_arrow_switches_fall_back_on(tmp_path):
+def test_the_arrow_switch_falls_back_on(tmp_path):
     p = tmp_path / "s.json"
-    save_settings(p, {"arrow_on": "yes", "arrow_steady": 1})
-    s = load_settings(p)
-    assert s["arrow_on"] is True and s["arrow_steady"] is True
+    save_settings(p, {"arrow_on": "yes"})
+    assert load_settings(p)["arrow_on"] is True
+
+
+@pytest.mark.parametrize(
+    "saved, loaded",
+    [("#ff5a5a", "#ff5a5a"), ("#123456", "#ffcc33"), (["#ff5a5a"], "#ffcc33"), (7, "#ffcc33")],
+)
+def test_arrow_colour_must_be_one_offered(tmp_path, saved, loaded):
+    p = tmp_path / "s.json"
+    save_settings(p, {"arrow_color": saved})
+    assert load_settings(p)["arrow_color"] == loaded

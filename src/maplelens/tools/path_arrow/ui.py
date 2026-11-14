@@ -34,11 +34,10 @@ from maplelens.overlay import (
     primary_button,
     secondary_button,
     setting_box,
-    setting_hint,
     text_label,
 )
 from maplelens.readers import Reading, glyphs
-from maplelens.store import ARROW_SIZES
+from maplelens.store import ARROW_COLORS, ARROW_SIZES
 from maplelens.tools.path_arrow.camera import by_size, can_place, fits, player_world, to_screen
 from maplelens.tools.path_arrow.maps import MapInfo, find, load, picture, search
 from maplelens.tools.path_arrow.route import Trip, plan
@@ -47,11 +46,9 @@ from maplelens.tools.path_arrow.route import Trip, plan
 # the head, under the 768-high frame the camera model works in.
 ARROW_DY = 100
 ARROW_SIZE = 36  # logical px, the arrow's square, unless Settings says otherwise
-ARROW_HOLD_S = 2.0  # Keep the arrow steady: a missed position keeps the arrow this long
 SHOW_ARROW = "Show the arrow"
 ARROW_SIZE_LABEL = "Arrow size"
-STEADY = "Keep the arrow steady"
-STEADY_HINT = "It stays put through a missed frame, up to 2 s"
+ARROW_COLOR_LABEL = "Arrow colour"
 _PREVIEW = ARROW_SIZES[-1] + 4  # the preview's square: the largest arrow fits
 # Arrived once the NPC's spot is on screen this many normalized px inside the side edges:
 # the camera can sit ~128 px off the model's sideways (see to_screen).
@@ -68,19 +65,15 @@ _DONE, _AHEAD, _NUM = "#6f7d93", "#c9d3e3", "#7b8aa3"  # mockup 3's route list
 _STYLE = FIELD_STYLE + f"QCheckBox {{ color: {VALUE_COLOR}; }}"
 
 
-def held(steady: bool, last_seen: float | None, now: float) -> bool:
-    """Keep showing the arrow through a frame that has no position?"""
-    return steady and last_seen is not None and now - last_seen <= ARROW_HOLD_S
-
-
 class _Arrow(QWidget):
-    """A plain arrow, pointing `angle` degrees (screen axes, y down): on the layer, or as
-    the preview in Settings."""
+    """A plain arrow, pointing `angle` degrees (screen axes, y down), in `color`: on the
+    layer, or as the preview in Settings."""
 
-    def __init__(self, parent: QWidget, size: int = ARROW_SIZE):
+    def __init__(self, parent: QWidget, size: int = ARROW_SIZE, color: str = ACCENT):
         super().__init__(parent)
         self.setFixedSize(size, size)
         self.angle = 0.0
+        self.color = color
         self.hide()
 
     def set_size(self, size: int) -> None:
@@ -100,7 +93,7 @@ class _Arrow(QWidget):
         tip = [(s, 0), (0, -0.8 * s), (0, -0.35 * s), (-s, -0.35 * s)]
         tip += [(-s, 0.35 * s), (0, 0.35 * s), (0, 0.8 * s)]
         p.setPen(QPen(QColor(DARK), 2))
-        p.setBrush(QColor(ACCENT if self.isEnabled() else DIM))  # greyed: the preview, arrow off
+        p.setBrush(QColor(self.color if self.isEnabled() else DIM))  # greyed: preview, arrow off
         p.drawPolygon(QPolygonF([QPointF(x, y) for x, y in tip]))
 
 
@@ -126,6 +119,45 @@ class _Search(QLineEdit):
     def focusOutEvent(self, event):
         self._typing(False)
         super().focusOutEvent(event)
+
+
+class _Swatch(QWidget):
+    """One of the arrow's colours in Settings: a dot, ringed while it's the chosen one."""
+
+    SIDE = 24
+
+    def __init__(self, color: str, name: str, on_pick: Callable[[str], None]):
+        super().__init__()
+        self.color, self.chosen, self._on_pick = color, False, on_pick
+        self.setFixedSize(self.SIDE, self.SIDE)
+        self.setToolTip(name)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setFocusPolicy(Qt.NoFocus)
+
+    def paintEvent(self, _event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        if self.chosen:
+            p.setPen(QPen(QColor(VALUE_COLOR if self.isEnabled() else DIM), 2))
+            p.setBrush(Qt.NoBrush)
+            p.drawEllipse(
+                QPointF(self.SIDE / 2, self.SIDE / 2), self.SIDE / 2 - 2, self.SIDE / 2 - 2
+            )
+        p.setPen(QPen(QColor(DARK), 1))
+        p.setBrush(QColor(self.color if self.isEnabled() else DIM))
+        p.drawEllipse(QPointF(self.SIDE / 2, self.SIDE / 2), 7, 7)
+
+    # It takes its press, as a button does, so nothing under it starts a drag.
+    def mousePressEvent(self, event):
+        event.setAccepted(event.button() == Qt.LeftButton)
+
+    def mouseReleaseEvent(self, event):
+        inside = self.rect().contains(event.position().toPoint())
+        if event.button() == Qt.LeftButton and inside and self.isEnabled():
+            self._on_pick(self.color)
+
+    def click(self) -> None:  # as a button's, for tests
+        self._on_pick(self.color)
 
 
 class PathArrowTool:
@@ -154,8 +186,9 @@ class PathArrowTool:
         self._r: Reading | None = None
         self._rect: tuple | None = None
         self._now = 0.0
-        self.arrow = _Arrow(layer, settings.get("arrow_size", ARROW_SIZE))
-        self._placed: tuple[float, str, Trip] | None = None  # (when, map id, trip) last aimed
+        self.arrow = _Arrow(
+            layer, settings.get("arrow_size", ARROW_SIZE), settings.get("arrow_color", ACCENT)
+        )
         self._preview: _Arrow | None = None  # in the Settings window, once it's built
         self._tab_w = TAB_W
         self.tab = self._build_tab(settings["path_taxi"])
@@ -390,12 +423,8 @@ class PathArrowTool:
         self._choose.setVisible(self.trip is None and self._arrived is None)
         self._running.setVisible(self.trip is not None)
         world = self._world()
-        # Keep the arrow steady: a frame that misses your position (the dot not found once,
-        # a clipped minimap not matched) keeps the arrow, and says nothing, for a moment.
-        holding = world is None and self._rect is not None and self._holds()
-        why = "" if holding else self._why(world)
         hint = HIDDEN if self.trip and self.trip.hidden_next(world) else ""
-        texts = [t for t in (why, hint) if t]
+        texts = [t for t in (self._why(world), hint) if t]
         act = "\n".join(t for t in texts if t in ACTIONS)
         info = "\n".join(t for t in texts if t not in ACTIONS)
         self._message.setText(act)
@@ -404,7 +433,7 @@ class PathArrowTool:
         self._info.setVisible(bool(info))
         known = self._here is not None and not self._unread()
         self._start.setEnabled(known and self._matches.currentItem() is not None)
-        self._place_arrow(world, holding)
+        self._place_arrow(world)
 
     def _world(self) -> tuple[float, float] | None:
         """The player's world position, from a reading of the confirmed map only."""
@@ -465,25 +494,13 @@ class PathArrowTool:
             return "No arrow on this part of the map yet"
         return ""  # a map that fits may still miss a frame: the arrow just hides
 
-    def _holds(self) -> bool:
-        """For a frame with no position: keep the arrow where it was, if it's the same trip
-        on the same map, for up to ARROW_HOLD_S since it was last aimed."""
-        if self._placed is None or self.arrow.isHidden():
-            return False
-        when, map_id, trip = self._placed
-        same = trip is self.trip and self._here is not None and self._here.id == map_id
-        return same and held(self._settings.get("arrow_steady", True), when, self._now)
-
-    def _place_arrow(self, world: tuple[float, float] | None, holding: bool = False) -> None:
+    def _place_arrow(self, world: tuple[float, float] | None) -> None:
         if not self._settings.get("arrow_on", True):
             self.arrow.hide()  # the route list still runs
             return
-        if holding:
-            return  # a missed frame: the arrow stays where it was
         here, rect = self._here, self._rect
         target = None if world is None or rect is None else self.trip.target(world)
         if target is None:
-            self._placed = None
             self.arrow.hide()
             return
         _, _, w, h = rect  # game client, physical px
@@ -495,7 +512,6 @@ class PathArrowTool:
         self.arrow.move(round(x - size / 2), round(y - size / 2))
         self.arrow.show()
         self.arrow.update()
-        self._placed = (self._now, here.id, self.trip)
 
     def settings_section(self) -> QWidget:
         """The Path section of the Settings window: the arrow's settings."""
@@ -516,7 +532,7 @@ class PathArrowTool:
         slider.valueChanged.connect(lambda i: self.set_arrow_size(ARROW_SIZES[i]))
         holder = QWidget()
         holder.setFixedSize(_PREVIEW, _PREVIEW)
-        self._preview = _Arrow(holder, size)
+        self._preview = _Arrow(holder, size, self.arrow.color)
         self._preview.angle = -30.0  # up and to the right, as on a climb
         self._preview.move((_PREVIEW - size) // 2, (_PREVIEW - size) // 2)
         self._preview.show()
@@ -526,11 +542,21 @@ class PathArrowTool:
         line.addWidget(slider, 1)
         line.addWidget(holder)
         rows.addWidget(size_row)
-        steady = setting_box(STEADY, self._settings.get("arrow_steady", True), self.set_steady)
-        rows.addWidget(steady)
-        hint = setting_hint(STEADY_HINT)
-        rows.addWidget(hint)
-        self._arrow_parts = [self._size_label, size_row, steady, hint]  # nothing, with no arrow
+        color_label = QLabel(ARROW_COLOR_LABEL)
+        rows.addWidget(color_label)
+        swatch_row = QWidget()
+        line = QHBoxLayout(swatch_row)
+        line.setContentsMargins(0, 0, 0, 0)
+        line.setSpacing(4)
+        self._swatches = [
+            _Swatch(c, name, self.set_arrow_color) for c, name in ARROW_COLORS.items()
+        ]
+        for swatch in self._swatches:
+            swatch.chosen = swatch.color == self.arrow.color
+            line.addWidget(swatch)
+        line.addStretch()
+        rows.addWidget(swatch_row)
+        self._arrow_parts = [self._size_label, size_row, color_label, swatch_row]  # no arrow: moot
         self._show_size(size)
         self._enable_parts(on)
         return section
@@ -558,6 +584,15 @@ class PathArrowTool:
             self._preview.set_size(size)
             self._show_size(size)
 
-    def set_steady(self, on: bool) -> None:
-        self._settings["arrow_steady"] = on
+    def set_arrow_color(self, color: str) -> None:
+        """The arrow's colour, live; and the preview's."""
+        self._settings["arrow_color"] = color
         self._changed()
+        self.arrow.color = color
+        self.arrow.update()
+        if self._preview is not None:
+            self._preview.color = color
+            self._preview.update()
+        for swatch in getattr(self, "_swatches", ()):
+            swatch.chosen = swatch.color == color
+            swatch.update()

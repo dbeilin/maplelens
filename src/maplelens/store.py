@@ -30,10 +30,20 @@ DEFAULTS = {
     "quests_on": True,
     "arrow_on": True,  # the path arrow over the character; off keeps the route list
     "arrow_size": 36,  # logical px, the arrow's square (ARROW_SIZES)
-    "arrow_steady": True,  # a missed position keeps the arrow up to ARROW_HOLD_S
+    "arrow_color": "#ffcc33",  # one of ARROW_COLORS; the box's yellow at first
 }
 
 ARROW_SIZES = range(24, 73, 4)  # the arrow sizes Settings offers, in px
+# The arrow colours Settings offers, each with its name (a swatch's tooltip): bright, so
+# they read over the game's maps, with the arrow's dark outline
+ARROW_COLORS = {
+    "#ffcc33": "Yellow",
+    "#ffffff": "White",
+    "#ff5a5a": "Red",
+    "#5ee07a": "Green",
+    "#4fd8ff": "Cyan",
+    "#ff7ad9": "Pink",
+}
 
 
 def _arrow_size(value: object) -> object:
@@ -55,7 +65,7 @@ CHECKS = {
     "class_on": _is_bool,
     "quests_on": _is_bool,
     "arrow_on": _is_bool,
-    "arrow_steady": _is_bool,
+    "arrow_color": lambda value: isinstance(value, str) and value in ARROW_COLORS,
 }
 # key -> a fix of a saved value: the value to keep, or None for the default
 FIXES = {"arrow_size": _arrow_size}

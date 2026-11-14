@@ -124,9 +124,8 @@ from source never does.
 
 **Settings:** click **•••** on the box and choose **Settings…**. Every change applies at
 once. You can turn off a tool you don't use (its tab goes away; at least one stays on),
-change the path arrow's size or hide it (under Path), and turn off the AP/SP marks on the
-game's stat and skill windows (under Class). **Keep the arrow steady** (on by default) keeps
-the arrow in place when a frame misses your position, for up to 2 seconds.
+change the path arrow's size and colour, or hide it (under Path), and turn off the AP/SP
+marks on the game's stat and skill windows (under Class).
 
 **Uninstalling:** Settings → Apps → MapleLens. Your settings and history stay in
 `%APPDATA%\MapleLens`; delete that folder to remove them too. If something goes wrong,

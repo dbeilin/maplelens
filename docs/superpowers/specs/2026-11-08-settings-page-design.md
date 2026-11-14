@@ -73,7 +73,7 @@ One design, five parts that ship and test separately:
 | Part | What it is | Depends on | State (2026-11-14) |
 |---|---|---|---|
 | `settings-window` | The window, the menu move, turning things off | none | Refreshed, ready |
-| `arrow-options` | Arrow size and steady mode | `settings-window` | Refreshed, ready |
+| `arrow-options` | Arrow show, size and colour | `settings-window` | Refreshed, ready |
 | `build-choice` | Build per job | `settings-window` | Needs a decision (#72) |
 | `exp-sessions` | Manual mode: Start, Pause, Reset | `settings-window` | Re-decided on #79, ready |
 | `best-sessions` | Sessions stored and ranked in History | `exp-sessions` | Re-decided on #79, ready |
@@ -159,23 +159,19 @@ Path section:
 |---|---|---|
 | Show the arrow | `arrow_on` | on |
 | Arrow size: slider, 24–72 px in steps of 4, with a live preview | `arrow_size` | 36 |
-| Keep the arrow steady | `arrow_steady` | on |
+| Arrow colour: a row of six swatches (yellow, white, red, green, cyan, pink) | `arrow_color` | yellow, the box's accent |
 
 - **Show the arrow** off keeps the route list running with no arrow. "Use taxi" stays on the
-  Path tab.
-- **The preview** is the real arrow drawn in the Settings window at the chosen size, because
-  the arrow on the game only shows during a trip *(my call)*.
-- **Keep the arrow steady:** when a frame has no position, the arrow stays where it was for
-  up to `ARROW_HOLD_S = 2.0` seconds *(my call)*, then hides. It holds only when the player
-  is still on the same map and the trip is still running. A frame that *has* a position but
-  no target (arrived, or nowhere to point) hides it at once, as today. *(Built 2026-11-14, fixed after Daniel's test: any miss holds,
-  whatever its reason. The common one is a frame where the reader doesn't find the "you" dot
-  exactly once, which comes back as no minimap, so "Open your minimap". While the arrow is
-  held, that line is held back too; past 2 s the arrow hides and the line shows.)*
-- **Steady is on by default**, so existing players lose the flicker without touching
-  anything *(my call)*.
+  Path tab. Size and colour grey out while it's off.
+- **The preview** is the real arrow drawn in the Settings window at the chosen size and
+  colour, because the arrow on the game only shows during a trip *(my call)*.
+- **Colour swatches, not a colour picker** (Daniel, 2026-11-14): one click, mouse only, so the
+  window never takes the keyboard; bright colours that read over the maps with the arrow's
+  dark outline. The chosen one is ringed; each names its colour in a tooltip.
 - The arrow's centre stays put as it grows. `ARROW_DY` doesn't change.
-- **No blink or pulse option** (Daniel: size and steady only).
+- **No steady mode** (Daniel, 2026-11-14). A "Keep the arrow steady" hold through missed
+  frames was built and tried; Daniel saw no blinking to fix either way, so it was taken out.
+- **No blink or pulse option** (Daniel).
 - *(Refresh 2026-11-14: nothing upstream touched the arrow. Only line numbers moved.)*
 
 ### `build-choice`
@@ -397,12 +393,12 @@ As the code does today: small pure parts, Qt only at the edge, values read from 
 with a named default.
 
 ```python
-ARROW_HOLD_S = 2.0  # a missed position keeps the arrow this long
-
-
-def held(steady: bool, last_seen: float | None, now: float) -> bool:
-    """Keep showing the arrow through a frame that has no position?"""
-    return steady and last_seen is not None and now - last_seen <= ARROW_HOLD_S
+def _arrow_size(value: object) -> object:
+    """An arrow size, clamped into ARROW_SIZES and rounded to its step; None if not a number."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    lo, hi, step = ARROW_SIZES.start, ARROW_SIZES[-1], ARROW_SIZES.step
+    return lo + int((min(max(value, lo), hi) - lo) / step + 0.5) * step  # halves round up
 ```
 
 ## Testing
@@ -417,7 +413,7 @@ def held(steady: bool, last_seen: float | None, now: float) -> bool:
     saved row's EXP/h equals the live `session()` value it was written from.
   - `test_store.py`: out-of-range and wrong-type values fall back or clamp; a settings file
     without the new keys loads.
-  - `held` at 0 s, at exactly 2 s and past 2 s, and with steady off.
+  - `arrow_size` clamps and rounds; `arrow_color` must be one offered.
 - **Offscreen Qt:**
   - The EXP tab in `auto`: no new buttons, the same height as before, "Idle" for a break.
   - The EXP tab in `manual`, in each state: buttons, labels, the session column kept while
@@ -425,8 +421,8 @@ def held(steady: bool, last_seen: float | None, now: float) -> bool:
   - Gains during a pause add nothing to a segment or the session, and the first reading after
     Start sets a new baseline.
   - Reset in `manual` saves the session and goes to not tracking.
-  - The arrow at 24, 36 and 72 px stays centred on the same point; steady holds on a missed
-    frame, and hides on a map change or when the trip stops.
+  - The arrow at 24, 36 and 72 px stays centred on the same point; a swatch recolours the
+    arrow and the preview live.
   - Turning off each of the four tools hides its tab, stops its `update`, and keeps
     `set_tab_dot`, `select` and `QuestFocus` indexes right. The last tool's switch is
     locked. EXP off hides the pinned line; Quests off stops the switch to Quests; Path off
@@ -442,7 +438,7 @@ def held(steady: bool, last_seen: float | None, now: float) -> bool:
   2. Start, hunt, Pause, hunt more, Start: the EXP from the pause isn't in History.
   3. With the game focused, press Start, Pause and Reset: the game keeps the keyboard.
   4. On a route: change the size and watch the arrow follow.
-  5. Compare the flicker with steady on and off on a map where it shows.
+  5. On a route: pick each colour and see the arrow change.
 - **By hand on a Mac:** Settings opens as a panel, the game stays active, and closing it
   doesn't quit.
 
@@ -464,8 +460,8 @@ def held(steady: bool, last_seen: float | None, now: float) -> bool:
    items gone from it.
 3. Each tool can be turned off and on live. The last one can't be turned off, and nothing
    errors in `maplelens.log` when any are off.
-4. The arrow's size changes live from 24 to 72 px, staying centred. With steady on, it doesn't
-   disappear for a missed position lasting up to 2 s.
+4. The arrow's size changes live from 24 to 72 px, staying centred, and its colour from the
+   swatches.
 5. `auto` (the default) works as #79 does, with "Idle" for a break. In `manual`, nothing is
    recorded until Start, and a session runs until Reset or quit.
 6. EXP earned while paused is never counted.
@@ -486,6 +482,3 @@ def held(steady: bool, last_seen: float | None, now: float) -> bool:
   3. Saving sessions and a Best sessions tab, which #79 left out of its scope.
 - *(Settled 2026-11-14: `manual` as the default for everyone. Daniel chose `auto` as the
   default and `manual` as an opt-in.)*
-- **Is the flicker what's in the code?** Steady mode assumes the blinking comes from missed
-  frames. If step 5 of the by-hand check shows flicker with steady on, the cause is something
-  else, and the 2 s hold needs another look.

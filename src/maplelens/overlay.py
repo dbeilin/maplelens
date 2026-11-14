@@ -348,14 +348,6 @@ def setting_box(text: str, checked: bool, on_change: Callable[[bool], None]) -> 
     return box
 
 
-def setting_hint(text: str) -> QLabel:
-    """A grey line under a setting, saying what it does; the Settings window styles it."""
-    label = QLabel(text)
-    label.setObjectName("hint")
-    label.setWordWrap(True)
-    return label
-
-
 def tool_switch(text: str, checked: bool, on_change: Callable[[bool], None]) -> QCheckBox:
     """A tool's on/off switch for the Settings window: each click applies at once."""
     box = ToolSwitch(text)
