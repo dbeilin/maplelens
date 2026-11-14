@@ -172,9 +172,11 @@ class Row(QWidget):
         trailing: QWidget | None = None,  # in place of the arrow, e.g. a button
         info: bool = False,  # the grey line is why it can't be clicked: an info mark leads it
         width: int = TAB_W,  # what the names are cut to
+        on_hover: Callable[[bool], None] | None = None,  # True on enter, False on leave or hide
     ):
         super().__init__()
         self.name, self.sub, self.best, self.outline = name, sub, best, outline
+        self._on_hover = on_hover
         self.info = info and bool(sub)
         self.clickable, self._on_click = on_click is not None, on_click
         self.setObjectName("row")
@@ -227,6 +229,22 @@ class Row(QWidget):
             return
         if self.rect().contains(event.position().toPoint()):
             self.click()
+
+    def _hover(self, inside: bool) -> None:
+        if self._on_hover:
+            self._on_hover(inside)
+
+    def enterEvent(self, event):
+        self._hover(True)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._hover(False)
+        super().leaveEvent(event)
+
+    def hideEvent(self, event):
+        self._hover(False)
+        super().hideEvent(event)
 
 
 def game_to_layer(px: float, py: float, dpr: float) -> tuple[float, float]:

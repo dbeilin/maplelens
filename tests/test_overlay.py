@@ -745,3 +745,18 @@ def test_current_and_touches(monkeypatch):
     assert (box.current, box.touches) == (0, 1)
     QTest.mouseClick(row, Qt.LeftButton)
     assert box.touches == 2
+
+
+def test_row_reports_hover(monkeypatch):
+    from PySide6.QtCore import QEvent, QPointF
+    from PySide6.QtGui import QEnterEvent
+    from PySide6.QtWidgets import QApplication
+
+    _box(monkeypatch)  # the app
+    seen = []
+    row = overlay.Row("A", "", None, on_hover=seen.append)
+    row.show()
+    QApplication.sendEvent(row, QEnterEvent(QPointF(1, 1), QPointF(1, 1), QPointF(1, 1)))
+    QApplication.sendEvent(row, QEvent(QEvent.Leave))
+    row.hide()
+    assert seen == [True, False, False]
