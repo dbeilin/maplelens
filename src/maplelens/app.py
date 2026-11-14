@@ -19,17 +19,17 @@ from pathlib import Path
 
 from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QImage
-from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
+from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 import maplelens
 from maplelens import capture, update, update_mac
 from maplelens.overlay import ABOUT, MENU_MARK, Box, Layer
 from maplelens.reader import InlineReader, ProcessReader, Rect
 from maplelens.readers import due, found, glyphs, ocr, quest_window
-from maplelens.settings_window import SettingsWindow
+from maplelens.settings_window import GeneralSection, SettingsWindow, sections
 from maplelens.store import data_dir, load_settings, save_settings
 from maplelens.tools.class_helper import data as class_data
-from maplelens.tools.class_helper.ui import MARKS, ClassHelperTool
+from maplelens.tools.class_helper.ui import ClassHelperTool
 from maplelens.tools.exp_meter.history import best_rate, open_db
 from maplelens.tools.exp_meter.ui import ExpMeterTool
 from maplelens.tools.path_arrow import maps
@@ -593,10 +593,10 @@ def update_check(  # noqa: PLR0913, PLR0917 - main's parts, plus the fetch tests
     now: float,
     fetch: Callable[[], dict] = fetch_latest,
 ) -> UpdateCheck | None:
-    """An UpdateCheck for the installed app (Windows or Mac), with its two menu items;
-    else None.
+    """An UpdateCheck for the installed app (Windows or Mac), else None. Its controls are in
+    Settings' General section (GeneralSection.add_updates).
 
-    Keep the result: Qt holds the menu items' links to it weakly. Clears the setups and
+    Keep the result: Qt holds the controls' links to it weakly. Clears the setups and
     dmgs earlier updates left in the data folder's `updates`; on the Mac also shows what
     the last update's helper left there.
     """
@@ -626,9 +626,6 @@ def update_check(  # noqa: PLR0913, PLR0917 - main's parts, plus the fetch tests
         platform=sys.platform,
         **mac,
     )
-    box.add_menu_item("Check for updates now", check.check_now, at=-1)  # above Quit
-    auto = settings.get("update_check", True)
-    box.add_toggle("Check for updates automatically", auto, check.set_auto, at=-1)
     if sys.platform == "darwin":
         check.show_result(update_mac.read_result(folder))
     return check
@@ -954,14 +951,17 @@ def main() -> int:
         path_tool.stop,
         path_tool.hops,
     )  # its go stays on the Quests tab while a trip runs
-    box = build_box(settings, save, [tool, path_tool, cls_tool, quest_tool], pick)
+    tools = [tool, path_tool, cls_tool, quest_tool]  # the tabs' order: indexes below rely on it
+    box = build_box(settings, save, tools, pick)
     box.add_footer(tool.pin_line, 0)  # the EXP line, under every tab but EXP's own
     box.set_footer_shown(tool.pinned)
     setup_screen_recording(box)
     add_build_menu(box, cls_tool)
-    box.add_toggle(MARKS, settings["class_marks"], cls_tool.set_marks, at=-1)
     updates = update_check(box, settings, save, seen, time.time())
-    settings_window = SettingsWindow([("General", QWidget())])  # held: the menu links weakly
+    general = GeneralSection()
+    if updates is not None:
+        general.add_updates(settings["update_check"], updates.set_auto, updates.check_now)
+    settings_window = SettingsWindow(sections(general, tools))  # held: the menu links weakly
     add_settings(box, settings_window)
     tray = make_tray(box, ICON, available=tray_available())  # held, or it leaves the tray
     shown = add_hide(box, layer, tray, click=sys.platform == "win32")

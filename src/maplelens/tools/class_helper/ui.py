@@ -28,6 +28,7 @@ from maplelens.overlay import (
     game_to_layer,
     native_setup,
     paint_box,
+    setting_box,
     text_label,
 )
 from maplelens.readers import Reading, glyphs
@@ -311,8 +312,16 @@ class ClassHelperTool:
         for m in self._pool:
             m.hide()
 
+    def settings_section(self) -> QWidget:
+        """The Class section of the Settings window."""
+        section = QWidget()
+        rows = QVBoxLayout(section)
+        rows.setContentsMargins(0, 0, 0, 0)
+        rows.addWidget(setting_box(MARKS, self._settings.get("class_marks", True), self.set_marks))
+        return section
+
     def set_marks(self, on: bool) -> None:
-        """Turn the marks on the game's windows on or off (the menu's item); the tab stays."""
+        """Turn the marks on the game's windows on or off (Settings' checkbox); the tab stays."""
         if self._settings.get("class_marks", True) == on:
             return
         self._settings["class_marks"] = on

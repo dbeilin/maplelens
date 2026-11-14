@@ -317,6 +317,20 @@ def test_marks_can_be_turned_off(make):
     assert tool.marks() == [("5 here", pos(*PLUS["LUK"]))]
 
 
+def test_the_settings_section_turns_the_marks_off(make):
+    from PySide6.QtWidgets import QCheckBox
+
+    from maplelens.tools.class_helper.ui import MARKS
+
+    tool = make()
+    tool.update(R(level=20, stats=SW(level=20, ap=5, base=s(4, 25, 4, 30))), RECT, 0)
+    section = tool.settings_section()  # held: the checkbox lives as long as its section
+    (box,) = section.findChildren(QCheckBox)
+    assert box.text() == MARKS and box.isChecked()
+    box.setChecked(False)
+    assert tool.marks() == [] and tool._settings["class_marks"] is False
+
+
 def test_marks_follow_and_hide(make):
     tool = make()
     tool.update(R(level=20, stats=SW(level=20, ap=5)), RECT, 0)

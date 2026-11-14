@@ -16,6 +16,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QHBoxLayout,
     QLabel,
     QLayout,
@@ -264,6 +265,15 @@ def native_setup(widget: QWidget) -> None:
         from maplelens import overlay_mac  # AppKit only exists on the Mac
 
         overlay_mac.make_panel(widget)
+
+
+def setting_box(text: str, checked: bool, on_change: Callable[[bool], None]) -> QCheckBox:
+    """A checkbox for the Settings window: each click applies at once; it never takes focus."""
+    box = QCheckBox(text)
+    box.setChecked(checked)
+    box.setFocusPolicy(Qt.NoFocus)
+    box.toggled.connect(on_change)
+    return box
 
 
 class FloatingWindow(QWidget):

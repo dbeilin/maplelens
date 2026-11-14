@@ -5,12 +5,47 @@ knows about another. Every control applies and saves the moment it changes: no O
 Only mouse controls: the window never takes the keyboard from the game.
 """
 
-from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
+from collections.abc import Callable
 
-from maplelens.overlay import FloatingWindow
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
+
+from maplelens.overlay import FloatingWindow, setting_box
 
 TITLE = "MapleLens — Settings"
+AUTO_UPDATES = "Check for updates automatically"
+CHECK_NOW = "Check now"
+
+
+class GeneralSection(QWidget):
+    """The app's own settings, which belong to no tool."""
+
+    def __init__(self):
+        super().__init__()
+        self._rows = QVBoxLayout(self)
+        self._rows.setContentsMargins(0, 0, 0, 0)
+
+    def add_updates(
+        self, auto: bool, set_auto: Callable[[bool], None], check_now: Callable[[], None]
+    ) -> None:
+        """The automatic update check's checkbox, and a button that checks now (its answer
+        shows in the box's notice line). Only the installed app has an update check."""
+        row = QHBoxLayout()
+        row.addWidget(setting_box(AUTO_UPDATES, auto, set_auto))
+        row.addStretch()
+        button = QPushButton(CHECK_NOW)
+        button.setFocusPolicy(Qt.NoFocus)
+        button.clicked.connect(check_now)
+        row.addWidget(button)
+        self._rows.addLayout(row)
+
+
+def sections(general: QWidget, tools: list) -> list[tuple[str, QWidget]]:
+    """General, then each tool's own section under its tab's name, for tools that have one."""
+    out = [("General", general)]
+    out += [(t.title, t.settings_section()) for t in tools if hasattr(t, "settings_section")]
+    return out
 
 
 class SettingsWindow(FloatingWindow):

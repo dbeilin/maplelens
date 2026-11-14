@@ -653,15 +653,10 @@ def test_from_source_there_is_no_update_check(qt_box, monkeypatch):
     assert _menu(qt_box) == ["Quit MapleLens"]  # neither update item
 
 
-def test_the_installed_app_has_both_items_above_quit(qt_box, installed):
+def test_the_installed_app_adds_no_menu_items(qt_box, installed):
     settings = {"update_check": True, "update_dismissed": None}
     app.update_check(qt_box, settings, lambda: None, set(), 0.0, _Fetch(NEWER))
-    assert _menu(qt_box) == [
-        "Check for updates now",
-        "Check for updates automatically",
-        "Quit MapleLens",
-    ]
-    assert qt_box.actions()[1].isCheckable() and qt_box.actions()[1].isChecked()
+    assert _menu(qt_box) == ["Quit MapleLens"]  # its controls are in Settings
 
 
 def test_toggle_off_survives_a_restart_and_check_now_still_works(qt_box, installed, tmp_path):
@@ -673,20 +668,16 @@ def test_toggle_off_survives_a_restart_and_check_now_still_works(qt_box, install
     def save():
         save_settings(path, settings)
 
-    # kept, as main keeps its own: the menu items call into it
     first = app.update_check(qt_box, settings, save, set(), 0.0, _Fetch())
-    qt_box.actions()[1].trigger()  # untick "Check for updates automatically"
+    first.set_auto(False)  # Settings' "Check for updates automatically", unticked
     assert load_settings(path)["update_check"] is False
-    assert first is not None
 
-    for a in qt_box.actions()[:-1]:  # "restart": a fresh menu, settings read from the file
-        qt_box.removeAction(a)
-    fetch, settings = _Fetch(NEWER), load_settings(path)
+    fetch, settings = _Fetch(NEWER), load_settings(path)  # "restart": settings from the file
     check = app.update_check(qt_box, settings, lambda: None, set(), 0.0, fetch)
     _run(check, 10 * app.UpdateCheck.EVERY_S)
     assert fetch.calls == 0  # no automatic request
-    assert not qt_box.actions()[1].isChecked()
-    qt_box.actions()[0].trigger()  # "Check for updates now"
+    assert settings["update_check"] is False  # what Settings' checkbox starts from
+    check.check_now()  # Settings' "Check now"
     _run(check, 10 * app.UpdateCheck.EVERY_S + 1)
     assert fetch.calls == 1
 
@@ -696,14 +687,13 @@ def test_toggling_back_on_resumes_the_automatic_checks(qt_box, installed):
     check = app.update_check(qt_box, settings, lambda: None, set(), 0.0, fetch)
     _run(check, 10.0)
     assert fetch.calls == 0
-    qt_box.actions()[1].trigger()
+    check.set_auto(True)
     _run(check, 11.0)
     assert fetch.calls == 1
 
 
-def _check_now(check, box, now):
-    [item] = [a for a in box.actions() if a.text() == "Check for updates now"]
-    item.trigger()
+def _check_now(check, _box, now):
+    check.check_now()  # Settings' "Check now"
     check._thread.join(5)
     check.poll(now)
 
@@ -951,11 +941,7 @@ def test_the_installed_mac_app_gets_an_update_check(qt_box, monkeypatch, tmp_pat
     settings = {"update_check": True, "update_dismissed": None}
     check = app.update_check(qt_box, settings, lambda: None, set(), 0.0, _Fetch(DMG))
     assert isinstance(check, app.UpdateCheck)
-    assert _menu(qt_box) == [
-        "Check for updates now",
-        "Check for updates automatically",
-        "Quit MapleLens",
-    ]
+    assert _menu(qt_box) == ["Quit MapleLens"]  # its controls are in Settings
     assert list(folder.iterdir()) == []  # the old dmg cleared, the result read once
     assert qt_box._notice_text.text() == app.UPDATE_FAILED
     assert check._install is update_mac.install_update

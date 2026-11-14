@@ -111,3 +111,37 @@ def test_a_click_reaches_a_control_in_the_window(qt):
     QTest.mouseClick(box, Qt.LeftButton, pos=QPoint(6, box.height() // 2))
     assert box.isChecked()
     win.close()
+
+
+def test_general_has_the_update_controls_only_when_asked(qt):
+    from PySide6.QtWidgets import QCheckBox, QPushButton
+
+    from maplelens.settings_window import AUTO_UPDATES, CHECK_NOW, GeneralSection
+
+    assert GeneralSection().findChildren(QCheckBox) == []  # from source: no update check
+    calls = []
+    general = GeneralSection()
+    general.add_updates(True, calls.append, lambda: calls.append("now"))
+    (box,) = general.findChildren(QCheckBox)
+    (button,) = general.findChildren(QPushButton)
+    assert (box.text(), box.isChecked(), button.text()) == (AUTO_UPDATES, True, CHECK_NOW)
+    box.setChecked(False)
+    button.click()
+    assert calls == [False, "now"]
+
+
+def test_sections_are_general_then_each_tool_with_one(qt):
+    from PySide6.QtWidgets import QLabel
+
+    from maplelens.settings_window import sections
+
+    class Tool:
+        def __init__(self, title, has):
+            self.title = title
+            if has:
+                self.settings_section = lambda: QLabel(title)
+
+    general = QLabel("g")
+    got = sections(general, [Tool("EXP", False), Tool("Class", True)])
+    assert [t for t, _ in got] == ["General", "Class"]
+    assert got[0][1] is general
