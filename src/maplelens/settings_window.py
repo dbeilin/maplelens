@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from maplelens.overlay import (
+    ACCENT,
     DIM,
     EDGE,
     FONT,
@@ -38,10 +39,16 @@ STYLE = f"""
 #settings {{ background: {_BG}; }}
 QScrollArea, #page {{ background: transparent; border: 0; }}
 QLabel {{ color: {VALUE_COLOR}; font-family: "{FONT}"; font-size: {LABEL_PT}pt; }}
-QLabel:disabled, #hint:disabled {{ color: {DIM}; }}
 QLabel#head {{ font-size: {LABEL_PT + 1}pt; font-weight: bold; }}
 #hint {{ color: {LABEL_COLOR}; }}
+QLabel:disabled, QLabel#hint:disabled {{ color: {DIM}; }}
 #card {{ background: {_CARD}; border: 1px solid {EDGE}; border-radius: 8px; }}
+QSlider::groove:horizontal {{ height: 4px; background: {EDGE}; border-radius: 2px; }}
+QSlider::sub-page:horizontal {{ background: {ACCENT}; border-radius: 2px; }}
+QSlider::handle:horizontal {{ background: {ACCENT}; width: 14px; margin: -5px 0;
+    border-radius: 7px; }}
+QSlider::sub-page:horizontal:disabled, QSlider::handle:horizontal:disabled {{
+    background: {DIM}; }}
 """
 _INDENT = 36  # a card's settings sit under its switch's name, not its toggle
 

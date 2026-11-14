@@ -28,7 +28,20 @@ DEFAULTS = {
     "path_on": True,
     "class_on": True,
     "quests_on": True,
+    "arrow_on": True,  # the path arrow over the character; off keeps the route list
+    "arrow_size": 36,  # logical px, the arrow's square (ARROW_SIZES)
+    "arrow_steady": True,  # a missed position keeps the arrow up to ARROW_HOLD_S
 }
+
+ARROW_SIZES = range(24, 73, 4)  # the arrow sizes Settings offers, in px
+
+
+def _arrow_size(value: object) -> object:
+    """An arrow size, clamped into ARROW_SIZES and rounded to its step; None if not a number."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    lo, hi, step = ARROW_SIZES.start, ARROW_SIZES[-1], ARROW_SIZES.step
+    return lo + int((min(max(value, lo), hi) - lo) / step + 0.5) * step  # halves round up
 
 
 def _is_bool(value: object) -> bool:
@@ -41,7 +54,11 @@ CHECKS = {
     "path_on": _is_bool,
     "class_on": _is_bool,
     "quests_on": _is_bool,
+    "arrow_on": _is_bool,
+    "arrow_steady": _is_bool,
 }
+# key -> a fix of a saved value: the value to keep, or None for the default
+FIXES = {"arrow_size": _arrow_size}
 
 
 def data_dir() -> Path:
@@ -70,6 +87,9 @@ def clean(settings: dict) -> dict:
     for key, ok in CHECKS.items():
         if not ok(settings[key]):
             settings[key] = copy.deepcopy(DEFAULTS[key])
+    for key, fix in FIXES.items():
+        fixed = fix(settings[key])
+        settings[key] = DEFAULTS[key] if fixed is None else fixed
     return settings
 
 

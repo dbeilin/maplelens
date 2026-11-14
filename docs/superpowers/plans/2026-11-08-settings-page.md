@@ -399,6 +399,8 @@ settings are. Run the spec's whole by-hand list.
 
 Phase 1 (T1–T6) built on `feat/settings-window`, 2026-11-14: the four checks pass and the
 window was drawn offscreen; Checkpoint A's by-hand checks on Windows and the Mac are still to
-do. Phases 1 and 2 were
+do. Phase 2 (T7–T8) built on `feat/arrow-options`, stacked on it,
+2026-11-14: steady mode holds only a miss `_why` has no reason for (a closed minimap still
+hides the arrow at once). Checkpoint B's flicker test in the game is still to do. Phases 1 and 2 were
 refreshed against v0.6.3 on 2026-11-14, and Phases 4 and 5 rewritten on top of #79 the same
 day. Phase 3 waits for the `build-choice` decision.

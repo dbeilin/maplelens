@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from maplelens.store import DEFAULTS, data_dir, load_settings, save_settings
 
 
@@ -55,3 +57,21 @@ def test_clean_leaves_keys_it_doesnt_check_alone(tmp_path):
     save_settings(p, {"boxes": "odd", "tab_width": "wide"})
     s = load_settings(p)
     assert (s["boxes"], s["tab_width"]) == ("odd", "wide")
+
+
+@pytest.mark.parametrize(
+    "saved, loaded",
+    [(36, 36), (60, 60), (10, 24), (500, 72), (37, 36), (39, 40), (50.0, 52), ("big", 36),
+     (True, 36), (None, 36)],
+)  # fmt: skip
+def test_arrow_size_is_clamped_to_the_offered_sizes(tmp_path, saved, loaded):
+    p = tmp_path / "s.json"
+    save_settings(p, {"arrow_size": saved})
+    assert load_settings(p)["arrow_size"] == loaded
+
+
+def test_the_arrow_switches_fall_back_on(tmp_path):
+    p = tmp_path / "s.json"
+    save_settings(p, {"arrow_on": "yes", "arrow_steady": 1})
+    s = load_settings(p)
+    assert s["arrow_on"] is True and s["arrow_steady"] is True

@@ -109,8 +109,12 @@ def test_start_shows_arrow_and_header(make):
     assert tool.arrow.angle == approx(-45)  # up and right, to the portal at (300, -300)
 
 
+def _unsteady():
+    return dict(DEFAULTS, boxes={}, arrow_steady=False)  # a missed frame hides the arrow
+
+
 def test_one_frame_misread_does_not_reroute(make):
-    tool = make()
+    tool = make(_unsteady())
     go(tool, "A", "C")
     steps = tool.trip.steps
     feed(tool, title("X"), 1.0, times=1)
@@ -269,7 +273,7 @@ def test_typing_toggles_focus(make):
 def test_same_title_neighbours_told_apart_by_minimap_size(make):
     p_view = MinimapView((88, 47), (44.0, 23.5), ())
     q_view = MinimapView((94, 53), (47.0, 26.5), ())
-    tool = make()
+    tool = make(_unsteady())
     feed(tool, title("P"), view=p_view)
     tool._search.setText("Rose")
     tool._start.click()
@@ -386,12 +390,109 @@ def test_clipped_map_part_without_markers_says_why(make):
     assert not tool.arrow.isVisible()
 
 
+MISS = MinimapView((135, 62), (67.5, 31.0), ())  # player_world None for this frame only
+
+
 def test_unclipped_frame_miss_has_no_line(make):
+    tool = make(_unsteady())
+    go(tool, "A", "C")
+    feed(tool, title("A"), 1.0, view=MISS, times=1)
+    assert not tool.arrow.isVisible()
+    assert not tool._message.isVisibleTo(tool.tab) and not tool._info.isVisibleTo(tool.tab)
+
+
+@pytest.mark.parametrize(
+    "steady, last, now, kept",
+    [(True, 5.0, 5.0, True), (True, 5.0, 7.0, True), (True, 5.0, 7.01, False),
+     (False, 5.0, 5.0, False), (True, None, 5.0, False)],
+)  # fmt: skip
+def test_held(steady, last, now, kept):
+    from maplelens.tools.path_arrow.ui import held
+
+    assert held(steady, last, now) is kept
+
+
+def test_steady_keeps_the_arrow_through_missed_frames_for_two_seconds(make):
+    tool = make()  # steady is on by default
+    go(tool, "A", "C")  # last aimed at t=0.5
+    where, angle = tool.arrow.pos(), tool.arrow.angle
+    feed(tool, title("A"), 1.0, view=MISS, times=1)
+    feed(tool, title("A"), 2.5, view=MISS, times=1)
+    assert tool.arrow.isVisible() and tool.arrow.pos() == where and tool.arrow.angle == angle
+    feed(tool, title("A"), 2.6, view=MISS, times=1)  # 2.1 s since it was last aimed
+    assert not tool.arrow.isVisible()
+
+
+def test_steady_hides_at_once_when_theres_a_reason(make):
     tool = make()
     go(tool, "A", "C")
-    feed(tool, title("A"), 1.0, view=MinimapView((135, 62), (67.5, 31.0), ()), times=1)
-    assert not tool.arrow.isVisible()  # player_world None for this frame only
-    assert not tool._message.isVisibleTo(tool.tab) and not tool._info.isVisibleTo(tool.tab)
+    feed(tool, title("A"), 1.0, view=None, times=1)  # the minimap closed: OPEN says so
+    assert not tool.arrow.isVisible()
+
+
+def test_steady_never_holds_past_stop_or_a_new_map(make):
+    tool = make()
+    go(tool, "A", "C")
+    tool.stop()
+    assert not tool.arrow.isVisible()
+    go(tool, "A", "C", 1.0)
+    feed(tool, title("B"), 2.0)  # on B now, aimed afresh
+    assert tool.arrow.isVisible()
+    tool._here = MAPS["A"]  # as if the map changed under a held arrow
+    feed(tool, None, 2.6, view=MISS, times=1)
+    assert not tool.arrow.isVisible()
+
+
+@pytest.mark.parametrize("size", [24, 36, 72])
+def test_the_arrow_grows_about_the_same_centre(make, size):
+    from maplelens.tools.path_arrow import ui
+
+    tool = make()
+    go(tool, "A", "C")
+    tool.set_arrow_size(size)
+    assert tool.arrow.width() == size
+    assert centre(tool.arrow) == approx((683, 545 - ui.ARROW_DY), abs=1)
+    feed(tool, title("A"), 1.0)  # placed afresh at the new size
+    assert centre(tool.arrow) == approx((683, 545 - ui.ARROW_DY), abs=1)
+    assert tool._settings["arrow_size"] == size
+
+
+def test_the_saved_size_is_used_from_the_start(make):
+    tool = make(dict(DEFAULTS, boxes={}, arrow_size=60))
+    assert tool.arrow.width() == 60
+
+
+def test_arrow_off_keeps_the_route_running(make):
+    saved = []
+    tool = make(on_changed=lambda: saved.append(1))
+    go(tool, "A", "C")
+    tool.set_arrow_on(False)
+    assert not tool.arrow.isVisible() and tool.running and saved
+    feed(tool, title("B"), 1.0)
+    assert not tool.arrow.isVisible() and tool._header.text() == "To Cherry · 2 of 3"
+    tool.set_arrow_on(True)
+    assert tool.arrow.isVisible()
+
+
+def test_the_path_section_sets_the_arrow(make):
+    from PySide6.QtWidgets import QCheckBox, QLabel, QSlider
+
+    from maplelens.tools.path_arrow import ui
+
+    tool = make()
+    section = tool.settings_section()  # held: its widgets live as long as it does
+    show, steady = section.findChildren(QCheckBox)
+    (slider,) = section.findChildren(QSlider)
+    assert (show.text(), steady.text()) == (ui.SHOW_ARROW, ui.STEADY)
+    assert show.isChecked() and steady.isChecked()
+    slider.setValue(slider.maximum())
+    assert tool.arrow.width() == 72 and tool._preview.width() == 72
+    assert any(w.text() == "Arrow size: 72 px" for w in section.findChildren(QLabel))
+    steady.setChecked(False)
+    assert tool._settings["arrow_steady"] is False
+    show.setChecked(False)
+    assert tool._settings["arrow_on"] is False
+    assert not slider.isEnabled() and not steady.isEnabled()  # nothing to size with no arrow
 
 
 def test_no_route_note_clears_on_map_change(make):
