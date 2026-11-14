@@ -1,7 +1,7 @@
 # <img src="docs/icon.png" alt="" width="40" align="absmiddle"> MapleLens
 
 An open-source overlay for **MapleStory Classic** that keeps you in the game.
-Instead of alt-tabbing to price sites, class guides and route finders, MapleLens
+Instead of alt-tabbing to class guides, quest lists and route finders, MapleLens
 reads what's on your screen and shows what you need on top of the game window.
 
 **[Download for Windows or Mac](https://github.com/or-keren/maplelens/releases/latest)** ·
@@ -9,7 +9,7 @@ free and open source
 
 ![MapleLens over MapleStory Classic in the Kerning City subway: the Path tab lists a 12-map route to Sleepywood, and a yellow arrow over the character points to the next portal](docs/screenshots/hero.jpg)
 
-## Safe to use
+## Screen-reading only
 
 MapleLens only **looks at the screen**, the way you do. It takes pictures of the game
 window and draws its own window on top. It never:
@@ -22,9 +22,10 @@ window and draws its own window on top. It never:
 
 ### Path arrow
 
-Pick any map, and an arrow over your character points the way (above).
+Pick a map, and an arrow over your character points the way (above). Keep the game's
+minimap open: the arrow is placed from it.
 
-- The Path tab lists every map on the route there.
+- The Path tab lists every map on the route there; tick **Use taxi** to ride the cabs.
 - The arrow points to the next portal, and to the NPC when you're headed to one.
 - Hidden portals get a hint: "stand on it and press ↑".
 
@@ -45,7 +46,8 @@ Your EXP per hour and time to level, live.
 
 Where to train for your class and level, and what comes next.
 
-- Your best training spot first, one click to set a route there.
+- The guide's training spots for your level, your best one marked from your own EXP
+  history; one click sets a route there.
 - Hover a spot to see its map, where each monster spawns, and their level, HP and EXP.
 - Pick your build; a Beginner picks the class they're heading for.
 - Job advancement, gear, and where to put AP and SP, marked right on the game's stat and
@@ -55,8 +57,8 @@ Where to train for your class and level, and what comes next.
 
 ### Quest helper
 
-Open a quest in the game, and the Quests tab shows where to go for each NPC, monster and
-item it needs, one click to set a route there.
+Open a quest in the game, and the box switches to the Quests tab: where to go for each
+NPC, monster and item it needs, one click to set a route there.
 
 - Each quest's rewards: EXP, mesos, the items (the ones for your class) and what the rest
   of its chain pays.
