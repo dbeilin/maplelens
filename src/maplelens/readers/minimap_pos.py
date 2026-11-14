@@ -73,8 +73,11 @@ def _map_area(frame: np.ndarray, x: int, y: int) -> tuple[int, int, int, int] | 
     y1 = y0 + (int(np.argmin(side)) if not side.all() else len(side)) - SIDE_PAST
     if y1 - y0 < 10 or x1 - x0 < 20 or y1 + 1 >= frame.shape[0]:
         return None
-    # A window over the map breaks the frame's bottom line (or the right one).
-    if frame[y1 + 1, x0:x1].min() < WHITE or frame[y0:y1, x1 + 2].min() < WHITE:
+    # A window over the map breaks the frame's bottom line (or the right one). The right
+    # line sits after a 1 px gap, but a Mac's fullscreen stretch can blur the gap away and
+    # leave the line 1 px nearer (The Burnt Land I, II), so either column counts.
+    right = frame[y0:y1, x1 + 1 : x1 + 3].min(axis=(0, 2)).max()
+    if frame[y1 + 1, x0:x1].min() < WHITE or right < WHITE:
         return None
     a = frame[y0:y1, x0:x1].astype(int)
     step = np.median(np.abs(np.diff(a, axis=1)).max(axis=2), axis=0)  # col i | i+1
