@@ -53,6 +53,8 @@ class GeneralSection(QWidget):
     ) -> None:
         """The automatic update check's checkbox, and a button that checks now (its answer
         shows in the box's notice line). Only the installed app has an update check."""
+        if self._rows.count():
+            self._rows.addSpacing(8)  # apart from the tool switches
         row = QHBoxLayout()
         row.addWidget(setting_box(AUTO_UPDATES, auto, set_auto))
         row.addStretch()
@@ -97,7 +99,7 @@ class SettingsWindow(FloatingWindow):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(scroll)
-        self.resize(380, 460)
+        self.resize(380, 320)  # it scrolls when sections outgrow it
 
     def set_section_enabled(self, title: str, on: bool) -> None:
         """Grey out a section (its tool is off), or bring it back; a missing one is fine."""
