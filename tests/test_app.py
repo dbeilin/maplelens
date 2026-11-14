@@ -1677,7 +1677,11 @@ def test_quests_off_never_switches_the_box_to_quests():
 class _Stops(_Quiet):
     def __init__(self):
         self.calls = []
+        self.can_go = True
         self.arrow = types.SimpleNamespace(hide=lambda: self.calls.append("arrow hidden"))
+
+    def set_can_go(self, on):
+        self.can_go = on
 
     def stop(self, *now):
         self.calls.append(("stop", *now))
@@ -1702,12 +1706,13 @@ def switches(qt_box):
     sections = {t: QLabel(t) for t in ("Path", "Class")}
     window = SettingsWindow(list(sections.items()))
     settings, saves = {}, []
-    exp, path, cls = _Stops(), _Stops(), _Stops()
-    sw = app.ToolSwitches(settings, lambda: saves.append(dict(settings)), qt_box, exp, path, cls)
+    exp, path, cls, quest = _Stops(), _Stops(), _Stops(), _Stops()
+    save = lambda: saves.append(dict(settings))  # noqa: E731
+    sw = app.ToolSwitches(settings, save, qt_box, exp, path, cls, quest)
     sw.apply(window, ["EXP", "Path", "Class", "Quests"])
     return types.SimpleNamespace(
         sw=sw, box=qt_box, settings=settings, saves=saves, exp=exp, path=path, cls=cls,
-        sections=sections, footer=footer,
+        quest=quest, sections=sections, footer=footer,
     )  # fmt: skip
 
 
@@ -1734,6 +1739,15 @@ def test_turning_exp_off_saves_it_and_hides_the_pinned_line(switches):
     assert s.footer.isVisibleTo(s.box)  # pin_exp is still on
 
 
+def test_path_off_makes_class_and_quests_rows_inert(switches):
+    s = switches
+    assert s.cls.can_go and s.quest.can_go
+    s.sw.set(1, False, 9.0)
+    assert not s.cls.can_go and not s.quest.can_go
+    s.sw.set(1, True, 10.0)
+    assert s.cls.can_go and s.quest.can_go
+
+
 def test_turning_class_off_hides_its_marks(switches):
     switches.sw.set(2, False, 9.0)
     assert switches.cls.calls == ["marks hidden"]
@@ -1744,8 +1758,10 @@ def test_tools_saved_off_start_hidden(qt_box):
 
     for title in ("EXP", "Path", "Class", "Quests"):
         qt_box.add_tab(title, QLabel(title))
-    settings = {"quests_on": False}
-    sw = app.ToolSwitches(settings, lambda: None, qt_box, _Stops(), _Stops(), _Stops())
+    settings = {"quests_on": False, "path_on": False}
+    cls, quest = _Stops(), _Stops()
+    sw = app.ToolSwitches(settings, lambda: None, qt_box, _Stops(), _Stops(), cls, quest)
     sw.apply(None, [])
     assert not qt_box._tab_buttons[3].isVisibleTo(qt_box)
     assert qt_box._tab_buttons[2].isVisibleTo(qt_box)
+    assert not cls.can_go and not quest.can_go  # Path saved off: no trips from the start

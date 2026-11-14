@@ -265,10 +265,10 @@ class ToolSwitches:
     """
 
     def __init__(  # noqa: PLR0913, PLR0917 - the box, the settings and each tool that stops
-        self, settings: dict, save: Callable[[], None], box: Box, exp, path, cls
+        self, settings: dict, save: Callable[[], None], box: Box, exp, path, cls, quest
     ):
         self._settings, self._save, self._box = settings, save, box
-        self._exp, self._path, self._cls = exp, path, cls
+        self._exp, self._path, self._cls, self._quest = exp, path, cls, quest
         self._window: SettingsWindow | None = None  # its sections grey out with their tools
         self._titles: list[str] = []
 
@@ -279,6 +279,7 @@ class ToolSwitches:
         for i, (key, _) in enumerate(TOOL_SWITCHES):
             if not tool_on(self._settings, key):
                 self._show(i, False)
+        self._tell_can_go()
 
     def set(self, index: int, on: bool, now: float) -> None:
         key = TOOL_SWITCHES[index][0]
@@ -288,7 +289,15 @@ class ToolSwitches:
         if not on:
             self._stop(key, now)
         self._show(index, on)
+        if key == "path_on":
+            self._tell_can_go()
         self._save()
+
+    def _tell_can_go(self) -> None:
+        """Class's and Quests' rows start trips on Path: only while Path is on."""
+        on = tool_on(self._settings, "path_on")
+        self._cls.set_can_go(on)
+        self._quest.set_can_go(on)
 
     def _stop(self, key: str, now: float) -> None:
         if key == "exp_on":
@@ -1029,7 +1038,7 @@ def main() -> int:
     add_build_menu(box, cls_tool)
     updates = update_check(box, settings, save, seen, time.time())
     general = GeneralSection()
-    switches = ToolSwitches(settings, save, box, tool, path_tool, cls_tool)
+    switches = ToolSwitches(settings, save, box, tool, path_tool, cls_tool, quest_tool)
     general.add_tool_switches(
         [label for _, label in TOOL_SWITCHES],
         [settings[key] for key, _ in TOOL_SWITCHES],
