@@ -1,33 +1,41 @@
 """The class helper's Class tab: where to train now, then what's next."""
 
+import sys
 from collections.abc import Callable
+from pathlib import Path
 
-from PySide6.QtCore import QRectF, Qt, QTimer
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
-from shiboken6 import delete
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt, QTimer
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from shiboken6 import delete, isValid
 
 from maplelens.overlay import (
     ACCENT,
     BOX_FILL,
     CHIP_BG,
+    EDGE,
+    FIELD,
     FONT,
     HERE_BG,
     LABEL_COLOR,
     LABEL_PT,
     TAB_W,
+    VALUE_COLOR,
+    VALUE_PT,
     InfoLine,
     Layer,
     Row,
     game_to_layer,
+    native_setup,
     text_label,
 )
 from maplelens.readers import Reading, glyphs
 from maplelens.readers.skill_window import SkillWindow
 from maplelens.readers.stat_window import StatWindow
 from maplelens.readers.window import UNREADABLE
-from maplelens.tools.class_helper.data import ClassData, Place, load
+from maplelens.tools.class_helper.data import ClassData, Place, SpotData, load, load_spots
 from maplelens.tools.class_helper.plan import (
+    Card,
     advance_ready,
     ap_advice,
     band_at,
@@ -36,6 +44,7 @@ from maplelens.tools.class_helper.plan import (
     short,
     short_name,
     sp_advice,
+    spot_card,
     training,
 )
 
@@ -60,6 +69,12 @@ RING_R, TAG_GAP = 11, 36
 MARK_PT = 9  # the tags over the game's windows keep their size; the box's labels grew
 
 DASH = "\u2013"
+
+# The hover card: its width, the picture's most height, its gap from the box, and the
+# delays before it shows (so a sweep across the tab doesn't flash it) and hides (so moving
+# to the next spot swaps it in place).
+CARD_W, PICTURE_H, GAP, SHOW_MS, HIDE_MS = 300, 240, 8, 150, 80
+_MARGIN, ICON, ICON_FIT, DOT_R, DOT_EDGE = 10, 48, 44, 4, "#141414"
 
 
 class _Mark(QWidget):
@@ -113,6 +128,133 @@ def _go_map(place: Place | None) -> str | None:
     return place.map_id if place else None
 
 
+def card_spot(box: QRect, row_top: int, size: QSize, screen: QRect) -> QPoint:
+    """Where the card goes: left of the box, level with the row; right when the left has no
+    room; then up or down to stay on the screen."""
+    x = box.x() - GAP - size.width()
+    if x < screen.x():
+        x = box.x() + box.width() + GAP
+    y = max(min(row_top, screen.y() + screen.height() - size.height()), screen.y())
+    return QPoint(x, y)
+
+
+def _words(text: str, pt: int, color: str, *, bold: bool = False) -> QLabel:
+    label = text_label(text, pt, color, bold=bold)
+    label.setWordWrap(True)
+    return label
+
+
+class _Art(QWidget):
+    """A picture on a dark field, drawn into `where`, with dots on it: (centre, colour)."""
+
+    def __init__(self, size: QSize, pixmap: QPixmap, where: QRectF, dots: list):
+        super().__init__()
+        self.setFixedSize(size)
+        self._pixmap, self._where, self._dots = pixmap, where, dots
+
+    def paintEvent(self, _event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setRenderHint(QPainter.SmoothPixmapTransform)
+        p.fillRect(self.rect(), QColor(FIELD))
+        p.drawPixmap(self._where, self._pixmap, QRectF(self._pixmap.rect()))  # a null one: nothing
+        p.setPen(QPen(QColor(DOT_EDGE), 1))
+        for centre, colour in self._dots:
+            p.setBrush(QColor(colour))
+            p.drawEllipse(centre, DOT_R, DOT_R)
+
+
+class SpotCard(QWidget):
+    """The hover card beside the box: a training spot's map with its spawn spots marked, and
+    its monsters. Never takes the game's focus or a click."""
+
+    def __init__(self):
+        flags = Qt.Tool | Qt.FramelessWindowHint
+        if sys.platform != "darwin":  # on the Mac, native_setup makes it a panel that does both
+            flags |= Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus
+        super().__init__(None, flags)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_QuitOnClose, False)
+        self.setFixedWidth(CARD_W)
+        self._pixmaps: dict[Path, QPixmap] = {}
+        self._title = QLabel()
+        self._body = QWidget()
+        col = QVBoxLayout(self)
+        col.setContentsMargins(_MARGIN, _MARGIN, _MARGIN, _MARGIN)
+        col.addWidget(self._body)
+
+    def title(self) -> str:
+        return self._title.text()
+
+    def _pixmap(self, path: Path) -> QPixmap:
+        if path not in self._pixmaps:
+            self._pixmaps[path] = QPixmap(str(path))
+        return self._pixmaps[path]
+
+    def fill(self, card: Card, spots: SpotData) -> None:
+        old, self._body = self._body, QWidget()
+        col = QVBoxLayout(self._body)
+        col.setContentsMargins(0, 0, 0, 0)
+        col.setSpacing(6)
+        self._title = _words(card.title, VALUE_PT, VALUE_COLOR, bold=True)
+        head = QVBoxLayout()
+        head.setSpacing(0)
+        head.addWidget(self._title)
+        if card.street:
+            head.addWidget(_words(card.street, LABEL_PT, LABEL_COLOR))
+        col.addLayout(head)
+        if card.picture:
+            w, h = card.size
+            k = min((CARD_W - 2 * _MARGIN) / w, PICTURE_H / h)
+            size = QSize(round(w * k), round(h * k))
+            dots = [(QPointF(x * k, y * k), c) for x, y, c in card.dots]
+            picture = self._pixmap(card.picture)
+            col.addWidget(_Art(size, picture, QRectF(QPointF(), size), dots), 0, Qt.AlignHCenter)
+        for mob in card.mobs:
+            path = spots.icon(mob.id)
+            icon = self._pixmap(path) if path else QPixmap()
+            where = QRectF(QPointF(), icon.size().scaled(ICON_FIT, ICON_FIT, Qt.KeepAspectRatio))
+            where.moveCenter(QPointF(ICON / 2, ICON / 2))
+            corner = QPointF(ICON - DOT_R - 3, ICON - DOT_R - 3)
+            line = QHBoxLayout()
+            line.setSpacing(8)
+            art = _Art(QSize(ICON, ICON), icon, where, [(corner, mob.colour)])
+            line.addWidget(art, 0, Qt.AlignTop)
+            words = QVBoxLayout()
+            words.setSpacing(0)
+            words.addWidget(_words(mob.name, LABEL_PT, VALUE_COLOR, bold=True))
+            words.addWidget(_words(mob.stats, LABEL_PT, LABEL_COLOR))
+            words.addWidget(_words(mob.spots, LABEL_PT, LABEL_COLOR))
+            line.addLayout(words, 1)
+            col.addLayout(line)
+        if card.cap:
+            col.addWidget(_words(card.cap, LABEL_PT, LABEL_COLOR))
+        self.layout().replaceWidget(old, self._body)
+        delete(old)
+        self._body.show()  # now, not on the next pass: the layout skips a hidden widget
+        self.resize(CARD_W, self.heightForWidth(CARD_W))  # as tall as the wrapped text
+
+    def put(self, row: QWidget) -> None:
+        box = row.window()
+        top = row.mapToGlobal(QPoint(0, 0)).y()
+        self.move(
+            card_spot(box.frameGeometry(), top, self.size(), box.screen().availableGeometry())
+        )
+
+    def showEvent(self, event):
+        native_setup(self)
+        super().showEvent(event)
+
+    def paintEvent(self, _event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(QColor(EDGE))
+        p.setBrush(QColor(*BOX_FILL))
+        p.drawRoundedRect(QRectF(0.5, 0.5, self.width() - 1, self.height() - 1), 8, 8)
+
+
 class ClassHelperTool:
     def __init__(  # noqa: PLR0913, PLR0917 - the tool's collaborators, as the other tools take
         self,
@@ -122,6 +264,7 @@ class ClassHelperTool:
         go: Callable[[str], None],
         best_rate: Callable[[str], float | None],
         data: ClassData | None = None,
+        spots: SpotData | None = None,
     ):
         self.title = "Class"
         self.dot = False
@@ -151,6 +294,12 @@ class ClassHelperTool:
         col = QVBoxLayout(self.tab)
         col.setContentsMargins(0, 4, 0, 0)
         col.addWidget(self._body)
+        self._spots = load_spots() if spots is None else spots
+        self._places: dict[str, Place] = {}  # map id -> the training spot's place
+        self._card = SpotCard()
+        self._pending: tuple[Card, Row] | None = None  # the card the show timer will show
+        self._show_timer = QTimer(singleShot=True, interval=SHOW_MS, timeout=self._show_card)
+        self._hide_timer = QTimer(singleShot=True, interval=HIDE_MS, timeout=self._card.hide)
         self._render([("info", NO_CLASS)])
 
     def set_tab_w(self, width: int) -> None:
@@ -322,7 +471,8 @@ class ClassHelperTool:
 
     def _items(self, r: Reading | None):  # -> (items, dot key)
         """Items are tuples, drawn in order: ("info", text), ("label", text, colour),
-        ("header", job, level, chip), ("row", name, sub, go map, best, outline), ("divider",)."""
+        ("header", job, level, chip), ("row", name, sub, go map, best, outline), ("divider",);
+        ("spot", ...) is a training row: a "row" that shows its card on hover."""
         if self._job is None or self._level is None:
             return [("info", NO_CLASS)], None
         job, level = self._job, self._level
@@ -367,8 +517,40 @@ class ClassHelperTool:
             sub = (
                 f"your best · {rate:,.0f}/min" if rate else f"mobs Lv {t.mobs[0]}{DASH}{t.mobs[1]}"
             )
-            out.append(("row", short_name(t.place.name), sub, t.place.map_id, i == top, False))
+            if t.place.map_id:
+                self._places[t.place.map_id] = t.place
+            out.append(("spot", short_name(t.place.name), sub, t.place.map_id, i == top, False))
         return out
+
+    def _spot_hover(self, map_id: str, row: Row, inside: bool) -> None:
+        # The rows report hiding while the tool is torn down too: garbage collection clears
+        # its attributes first, and at exit Python deletes the card and timers first.
+        parts = [getattr(self, n, None) for n in ("_card", "_show_timer", "_hide_timer")]
+        if not all(p is not None and isValid(p) for p in parts):
+            return
+        if not inside:
+            self._show_timer.stop()
+            if self._card.isVisible():
+                self._hide_timer.start()
+            return
+        card = spot_card(self._places[map_id], self._spots)
+        if card is None:
+            return
+        if self._card.isVisible():  # straight from another spot: swap it in place
+            self._hide_timer.stop()
+            self._card.fill(card, self._spots)
+            self._card.put(row)
+        else:
+            self._pending = (card, row)
+            self._show_timer.start()
+
+    def _show_card(self) -> None:
+        if self._pending is None:
+            return
+        (card, row), self._pending = self._pending, None
+        self._card.fill(card, self._spots)
+        self._card.put(row)
+        self._card.show()
 
     def _build_items(self, plan, build) -> list:
         """("pick", name, sub, build or None to open the list, current): a row per build."""
@@ -450,10 +632,17 @@ class ClassHelperTool:
             return Row(
                 name, sub, lambda: QTimer.singleShot(0, act), best=current, width=self._tab_w
             )
-        if kind == "row":
+        if kind in {"row", "spot"}:
             _, name, sub, map_id, best, outline = item
             go = (lambda m=map_id: self._go(m)) if map_id else None
-            return Row(name, sub, go, best=best, outline=outline, width=self._tab_w)
+            hover = None
+            if kind == "spot" and map_id:
+
+                def hover(on: bool) -> None:
+                    self._spot_hover(map_id, row, on)
+
+            row = Row(name, sub, go, best=best, outline=outline, width=self._tab_w, on_hover=hover)
+            return row
         _, job, level, chip = item  # the header
         head = QWidget()
         row = QHBoxLayout(head)
@@ -494,3 +683,8 @@ class ClassHelperTool:
         parent.insertWidget(parent.indexOf(old), self._body)
         parent.removeWidget(old)
         delete(old)  # at once: a widget left to deleteLater still shows in the tab's children
+        # Last: the old rows may report a leave as they go.
+        self._show_timer.stop()
+        self._hide_timer.stop()
+        self._pending = None
+        self._card.hide()

@@ -8,9 +8,10 @@ from maplelens.readers.skill_window import SkillRow, SkillWindow
 from maplelens.readers.stat_window import StatWindow
 from maplelens.readers.window import UNREADABLE
 from maplelens.store import DEFAULTS
-from maplelens.tools.class_helper.data import MAPS, load
+from maplelens.tools.class_helper.data import MAPS, load, load_spots
 
 SMALL = Path(__file__).parent / "fixtures" / "classes_small.json"
+SPOTS_SMALL = Path(__file__).parent / "fixtures" / "spots_small.json"
 RECT = (0, 0, 1366, 768)
 
 
@@ -45,14 +46,24 @@ def pos(x, y):
 
 
 @pytest.fixture
-def make(monkeypatch):
+def make(monkeypatch, tmp_path):
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QColor, QImage
     from PySide6.QtWidgets import QApplication
 
     from maplelens.overlay import Layer
     from maplelens.tools.class_helper.ui import ClassHelperTool
 
     QApplication.instance() or QApplication([])
+    pics, icons = tmp_path / "pics", tmp_path / "icons"
+    pics.mkdir()
+    icons.mkdir()
+    picture, icon = QImage(40, 20, QImage.Format_ARGB32), QImage(8, 8, QImage.Format_ARGB32)
+    picture.fill(QColor("#5a7a3a"))
+    icon.fill(QColor("#e08040"))
+    assert picture.save(str(pics / "000000001.webp"))
+    assert icon.save(str(icons / "2.png")) and icon.save(str(icons / "3.png"))
+    spots = load_spots.__wrapped__(SPOTS_SMALL, pics, icons)  # uncached: a SpotData per test
 
     def build(on_changed=lambda: None, best_rate=lambda t: None):
         layer = Layer()
@@ -60,7 +71,7 @@ def make(monkeypatch):
         gone = []
         settings = dict(DEFAULTS, class_builds={})
         tool = ClassHelperTool(
-            settings, on_changed, layer, gone.append, best_rate, load(SMALL, MAPS)
+            settings, on_changed, layer, gone.append, best_rate, load(SMALL, MAPS), spots
         )
         tool.gone = gone
         return tool
@@ -582,3 +593,131 @@ def test_mark_tag_has_a_dark_background(make):
     _tool, mark, _ = luk_mark(make, 1440)
     behind = QColor.fromRgba(mark.grab().toImage().pixel(mark.width() - 3, mark.height() // 2))
     assert behind.alpha() > 200 and behind.lightness() < 60
+
+
+def hover(row, on):
+    from PySide6.QtCore import QEvent, QPointF
+    from PySide6.QtGui import QEnterEvent
+    from PySide6.QtWidgets import QApplication
+
+    p = QPointF(1, 1)
+    QApplication.sendEvent(row, QEnterEvent(p, p, p) if on else QEvent(QEvent.Leave))
+
+
+def wait(ms):
+    from PySide6.QtTest import QTest
+
+    QTest.qWait(ms)
+
+
+def test_hovering_a_spot_shows_its_card(make):
+    from PySide6.QtWidgets import QLabel
+
+    from maplelens.tools.class_helper.plan import short_name
+    from maplelens.tools.class_helper.ui import HIDE_MS, SHOW_MS
+
+    tool = make()
+    tool.update(R(level=12), RECT, 0)
+    spot = rows(tool)[0]  # the 000000001 training row
+    hover(spot, True)
+    wait(SHOW_MS + 100)
+    assert tool._card.isVisible() and tool._card.title() == short_name(spot.name)
+    shown = [w.text() for w in tool._card.findChildren(QLabel)]
+    assert {"Snail", "Blue Snail", "Up to 5 monsters at once"} <= set(shown)
+    hover(spot, False)
+    wait(HIDE_MS + 100)
+    assert not tool._card.isVisible()
+
+
+def test_a_quick_pass_shows_no_card(make):
+    from maplelens.tools.class_helper.ui import SHOW_MS
+
+    tool = make()
+    tool.update(R(level=12), RECT, 0)
+    spot = rows(tool)[0]
+    hover(spot, True)
+    wait(50)
+    hover(spot, False)
+    wait(SHOW_MS + 150)
+    assert not tool._card.isVisible()
+
+
+def test_a_spot_without_data_shows_no_card(make):
+    from maplelens.tools.class_helper.ui import SHOW_MS
+
+    tool = make()
+    tool.update(R(level=12), RECT, 0)
+    hover(named(tool, "Third"), True)  # no map id: spot_card gives None
+    wait(SHOW_MS + 100)
+    assert not tool._card.isVisible()
+
+
+def test_hiding_the_tab_hides_the_card(make):
+    from maplelens.tools.class_helper.ui import HIDE_MS, SHOW_MS
+
+    tool = make()
+    tool.update(R(level=12), RECT, 0)
+    tool.tab.show()
+    hover(rows(tool)[0], True)
+    wait(SHOW_MS + 100)
+    assert tool._card.isVisible()
+    tool.tab.hide()
+    wait(HIDE_MS + 100)
+    assert not tool._card.isVisible()
+
+
+def test_redraw_hides_the_card_and_cancels_a_pending_show(make):
+    from maplelens.tools.class_helper.ui import SHOW_MS
+
+    tool = make()
+    tool.update(R(level=12), RECT, 0)
+    spot = rows(tool)[0]
+    hover(spot, True)
+    tool._render([("info", "x")])
+    wait(SHOW_MS + 150)
+    assert not tool._card.isVisible()
+    tool.update(R(level=12), RECT, 1)
+    hover(rows(tool)[0], True)
+    wait(SHOW_MS + 100)
+    assert tool._card.isVisible()
+    tool._render([("info", "x")])
+    assert not tool._card.isVisible()
+
+
+def test_the_card_never_takes_focus_or_clicks(make):
+    import sys
+
+    from PySide6.QtCore import Qt
+
+    c = make()._card
+    assert c.testAttribute(Qt.WA_ShowWithoutActivating)
+    assert c.testAttribute(Qt.WA_TransparentForMouseEvents)
+    if sys.platform != "darwin":
+        assert c.windowFlags() & Qt.WindowDoesNotAcceptFocus
+
+
+def test_card_spot_flips_right_and_stays_on_screen():
+    from PySide6.QtCore import QPoint, QRect, QSize
+
+    from maplelens.tools.class_helper.ui import card_spot
+
+    screen, size = QRect(0, 0, 1366, 768), QSize(300, 400)
+    assert card_spot(QRect(900, 40, 238, 300), 100, size, screen) == QPoint(900 - 8 - 300, 100)
+    assert card_spot(QRect(10, 40, 238, 300), 100, size, screen) == QPoint(10 + 238 + 8, 100)
+    assert card_spot(QRect(900, 40, 238, 300), 600, size, screen).y() == 768 - 400
+
+
+def test_a_card_filled_while_shown_fits_its_new_content(make):
+    from dataclasses import replace
+
+    from maplelens.tools.class_helper.plan import spot_card
+    from maplelens.tools.class_helper.ui import SHOW_MS
+
+    tool = make()
+    tool.update(R(level=12), RECT, 0)
+    hover(rows(tool)[0], True)
+    wait(SHOW_MS + 100)
+    tall = tool._card.height()
+    card = spot_card(tool._places["000000001"], tool._spots)
+    tool._card.fill(replace(card, picture=None), tool._spots)  # as moving to another spot does
+    assert tool._card.height() == tool._card.heightForWidth(tool._card.width()) < tall - 100
