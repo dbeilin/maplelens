@@ -42,13 +42,21 @@ EXE = APP / "MapleLens.exe"
 LICENSES = DIST / "MapleLens" / "licenses"
 SRC_PKG = REPO / "src" / "maplelens"
 BUNDLE_PKG = DIST / "MapleLens" / "_internal" / "maplelens"
-# Data folders, relative to the package, whose PNG count must survive the freeze.
-COUNTED = ["readers/templates", "data/minimaps", "data/item_icons"]
+# Data folders, relative to the package, whose file count must survive the freeze.
+COUNTED = [
+    "readers/templates",
+    "data/minimaps",
+    "data/item_icons",
+    "data/map_pictures",
+    "data/monster_icons",
+]
 # Files, relative to the app folder, the bundle must have. The self-check opens no
 # window, so it can't miss Qt's Windows platform plugin, without which the app can't show
-# its box. The icon it does load; checking it here names the missing file.
+# its box. The icon it does load; checking it here names the missing file. The WebP
+# plugin: without it the map pictures don't load.
 REQUIRED = [
     "_internal/PySide6/plugins/platforms/qwindows.dll",
+    "_internal/PySide6/plugins/imageformats/qwebp.dll",
     "_internal/maplelens/data/icon.ico",
 ]
 # A frozen app whose import fails shows an error box and waits for a click: on CI, until
@@ -62,6 +70,7 @@ MAC_LICENSES = MAC_APP / "Contents/Resources/licenses"
 # Windows: the self-check loads it, and this names the missing file.
 MAC_REQUIRED = [
     "Contents/Frameworks/PySide6/Qt/plugins/platforms/libqcocoa.dylib",
+    "Contents/Frameworks/PySide6/Qt/plugins/imageformats/libqwebp.dylib",
     "Contents/Resources/maplelens/data/icon.ico",
 ]
 # Where Inno Setup 6 installs ISCC.exe: for all users, and per user (winget --scope user).
@@ -248,13 +257,13 @@ def installer_cmd(iscc: Path, version: str) -> list[str]:
 
 
 def check_bundle(src: Path, bundle: Path, app: Path = APP, required: list[str] = REQUIRED) -> None:
-    """Exit if `bundle` holds fewer PNGs than `src` in any COUNTED folder, or `app` lacks
+    """Exit if `bundle` holds fewer files than `src` in any COUNTED folder, or `app` lacks
     a REQUIRED file."""
     for rel in COUNTED:
-        want = len(list((src / rel).rglob("*.png")))
-        have = len(list((bundle / rel).rglob("*.png")))
+        want = sum(p.is_file() for p in (src / rel).rglob("*"))
+        have = sum(p.is_file() for p in (bundle / rel).rglob("*"))
         if have < want:
-            sys.exit(f"bundle has {have} of {want} PNGs in {rel}")
+            sys.exit(f"bundle has {have} of {want} files in {rel}")
     for rel in required:
         if not (app / rel).is_file():
             sys.exit(f"bundle has no {rel}")
