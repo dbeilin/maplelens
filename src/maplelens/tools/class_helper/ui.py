@@ -1,7 +1,7 @@
 """The class helper's Class tab: where to train now, then what's next."""
 
-import sys
 from collections.abc import Callable
+from math import sqrt
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt, QTimer
@@ -11,7 +11,6 @@ from shiboken6 import delete, isValid
 
 from maplelens.overlay import (
     ACCENT,
-    BOX_EDGE,
     BOX_FILL,
     CHIP_BG,
     FIELD,
@@ -19,6 +18,7 @@ from maplelens.overlay import (
     HERE_BG,
     LABEL_COLOR,
     LABEL_PT,
+    OVERLAY,
     TAB_W,
     VALUE_COLOR,
     VALUE_PT,
@@ -27,6 +27,7 @@ from maplelens.overlay import (
     Row,
     game_to_layer,
     native_setup,
+    paint_box,
     text_label,
 )
 from maplelens.readers import Reading, glyphs
@@ -159,9 +160,11 @@ class _Art(QWidget):
         p.fillRect(self.rect(), QColor(FIELD))
         p.drawPixmap(self._where, self._pixmap, QRectF(self._pixmap.rect()))  # a null one: nothing
         p.setPen(QPen(QColor(DOT_EDGE), 1))
+        # Smaller on a busy map, so the platforms still show between the dots.
+        r = max(2.0, min(DOT_R, DOT_R * sqrt(30 / len(self._dots)))) if self._dots else DOT_R
         for centre, colour in self._dots:
             p.setBrush(QColor(colour))
-            p.drawEllipse(centre, DOT_R, DOT_R)
+            p.drawEllipse(centre, r, r)
 
 
 class SpotCard(QWidget):
@@ -170,10 +173,7 @@ class SpotCard(QWidget):
 
     def __init__(self):
         # Clicks go through to the game: the attribute alone still lets the OS send them here.
-        flags = Qt.Tool | Qt.FramelessWindowHint | Qt.WindowTransparentForInput
-        if sys.platform != "darwin":  # on the Mac, native_setup makes it a panel that does both
-            flags |= Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus
-        super().__init__(None, flags)
+        super().__init__(None, OVERLAY | Qt.WindowTransparentForInput)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -249,11 +249,7 @@ class SpotCard(QWidget):
         super().showEvent(event)
 
     def paintEvent(self, _event):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setPen(QColor(*BOX_EDGE))
-        p.setBrush(QColor(*BOX_FILL))
-        p.drawRoundedRect(QRectF(0.5, 0.5, self.width() - 1, self.height() - 1), 8, 8)
+        paint_box(self)
 
 
 class ClassHelperTool:

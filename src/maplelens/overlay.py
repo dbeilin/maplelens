@@ -266,14 +266,23 @@ def native_setup(widget: QWidget) -> None:
         overlay_mac.make_panel(widget)
 
 
-_OVERLAY = Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus
+OVERLAY = Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus
+
+
+def paint_box(widget: QWidget) -> None:
+    """The box's look on a see-through window: dark fill, thin edge, round corners."""
+    p = QPainter(widget)
+    p.setRenderHint(QPainter.Antialiasing)
+    p.setPen(QColor(*BOX_EDGE))
+    p.setBrush(QColor(*BOX_FILL))
+    p.drawRoundedRect(QRectF(0.5, 0.5, widget.width() - 1, widget.height() - 1), 8, 8)
 
 
 class Layer(QWidget):
     """Empty see-through window over the game's client area; tools draw on it later."""
 
     def __init__(self):
-        super().__init__(None, _OVERLAY | Qt.WindowTransparentForInput)
+        super().__init__(None, OVERLAY | Qt.WindowTransparentForInput)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
 
@@ -347,7 +356,7 @@ class Box(QWidget):
     """A small dark box with a tab strip; drag it, its spot is saved per game window."""
 
     def __init__(self, name: str, settings: dict, on_moved: Callable[[], None]):
-        super().__init__(None, _OVERLAY)
+        super().__init__(None, OVERLAY)
         self._name, self._settings, self._on_moved = name, settings, on_moved
         self._tab_w = fit_tab_w(settings.get("tab_width"))
         self._tab_w_listeners: list[Callable[[int], None]] = []
@@ -684,11 +693,7 @@ class Box(QWidget):
         super().resizeEvent(event)
 
     def paintEvent(self, _event):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setPen(QColor(*BOX_EDGE))
-        p.setBrush(QColor(*BOX_FILL))
-        p.drawRoundedRect(QRectF(0.5, 0.5, self.width() - 1, self.height() - 1), 8, 8)
+        paint_box(self)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
