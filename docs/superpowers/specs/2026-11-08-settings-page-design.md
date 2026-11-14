@@ -168,7 +168,9 @@ Path section:
 - **Keep the arrow steady:** when a frame has no position, the arrow stays where it was for
   up to `ARROW_HOLD_S = 2.0` seconds *(my call)*, then hides. It holds only when the player
   is still on the same map and the trip is still running. A frame that *has* a position but
-  no target (arrived, or nowhere to point) hides it at once, as today.
+  no target (arrived, or nowhere to point) hides it at once, as today. *(Built 2026-11-14:
+  it also holds only a miss the tab gives no reason for. When `_why` says why there's no
+  arrow, such as a closed minimap, it hides at once, so the arrow and the tab's line agree.)*
 - **Steady is on by default**, so existing players lose the flicker without touching
   anything *(my call)*.
 - The arrow's centre stays put as it grows. `ARROW_DY` doesn't change.
