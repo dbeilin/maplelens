@@ -40,7 +40,7 @@ Your EXP per hour and time to level, live.
 - **Pin** keeps the EXP line on every other tab. If the EXP bar can't be read, the tab says
   so in amber.
 
-![The EXP tab showing 21,433 EXP an hour and level up in 3h 49m, over the History window: the best maps for a level 29 Rogue, with Transfer Area at 49,198 EXP an hour, then the average EXP per hour for each map, class and level](docs/screenshots/exp.jpg)
+![The EXP tab showing 44,789 EXP an hour over the last 5 minutes beside a 17-minute session average of 34,559, level up in 2h 18m, and the History and Pin buttons. Below it the History window: the best maps for a level 32 Assassin, with Transfer Area at 46,487 EXP an hour, then the average EXP per hour for each map, class and level](docs/screenshots/exp.jpg)
 
 ### Class helper
 
@@ -53,7 +53,9 @@ Where to train for your class and level, and what comes next.
 - Job advancement, gear, and where to put AP and SP, marked right on the game's stat and
   skill windows.
 
-![The Class tab for a level 29 Rogue with 5 AP and 3 SP: three training spots with Transfer Area marked as the best at 879 EXP a minute, then the level 30 advancement and gear. Over the game's stat window a ring on LUK's + button says 5 here, and over the skill window a ring on Dark Sight's says 3 here](docs/screenshots/class.jpg)
+![The Class tab for a level 32 Assassin: three training spots with Transfer Area marked your best at 970 EXP a minute, then Bronze Guardian gear at level 35 and Hermit at level 70. Hovering Transfer Area opens a card beside the box: the Kerning City Subway map with its 38 Stirge spawn spots marked, the Stirge's level, HP and EXP, and up to 16 monsters at once](docs/screenshots/class.jpg)
+
+![The Class tab for a level 29 Rogue with 5 AP and 3 SP: three training spots with Transfer Area marked as the best at 879 EXP a minute, then the level 30 advancement and gear. Over the game's stat window a ring on LUK's + button says 5 here, and over the skill window a ring on Dark Sight's says 3 here](docs/screenshots/class-marks.jpg)
 
 ### Quest helper
 
@@ -67,7 +69,9 @@ NPC, monster and item it needs, one click to set a route there.
 - Each quest switches between **Closest** (the nearest map) and **Best** (the most
   monsters).
 
-![The Quests tab next to the game's quest window: The Filing Error's Torn Ledger Pages row is outlined with Going · 5 maps away and a Stop button, the Path tab shows its running dot, and a yellow arrow by the character points the way](docs/screenshots/quests.jpg)
+![The Quests tab next to the game's Quest Helper, both following The Filing Error. Its rewards are open: 4,090 EXP and 892 mesos, 10 Blue Potions and 10 Orange Potions, and +20,450 EXP and 4,460 mesos for the rest of its 5-quest chain. Below them, where to go: Torn Ledger Pages ×25 in Fairy 4, and Chief Stan in Henesys to hand it in](docs/screenshots/quests.jpg)
+
+![The Quests tab next to the game's quest window: The Filing Error's Torn Ledger Pages row is outlined with Going · 5 maps away and a Stop button, the Path tab shows its running dot, and a yellow arrow by the character points the way](docs/screenshots/quests-trip.jpg)
 
 ### The box
 
