@@ -61,7 +61,7 @@ def make(monkeypatch, tmp_path):
     picture, icon = QImage(40, 20, QImage.Format_ARGB32), QImage(8, 8, QImage.Format_ARGB32)
     picture.fill(QColor("#5a7a3a"))
     icon.fill(QColor("#e08040"))
-    assert picture.save(str(pics / "000000001.webp"))
+    assert picture.save(str(pics / "000000001.webp")) and picture.save(str(pics / "000000002.webp"))
     assert icon.save(str(icons / "2.png")) and icon.save(str(icons / "3.png"))
     spots = load_spots.__wrapped__(SPOTS_SMALL, pics, icons)  # uncached: a SpotData per test
 
@@ -647,9 +647,27 @@ def test_a_spot_without_data_shows_no_card(make):
 
     tool = make()
     tool.update(R(level=12), RECT, 0)
-    hover(named(tool, "Third"), True)  # no map id: spot_card gives None
+    hover(named(tool, "Fourth"), True)  # a map id with no spot data: spot_card gives None
     wait(SHOW_MS + 100)
     assert not tool._card.isVisible()
+
+
+def test_moving_to_another_spot_swaps_the_card_in_place(make):
+    from maplelens.tools.class_helper.ui import HIDE_MS, SHOW_MS
+
+    tool = make()
+    tool.update(R(level=12), RECT, 0)
+    first, third = rows(tool)[0], named(tool, "Third")
+    hidden = []
+    tool._hide_timer.timeout.connect(lambda: hidden.append(1))
+    hover(first, True)
+    wait(SHOW_MS + 100)
+    assert tool._card.isVisible()
+    hover(first, False)
+    hover(third, True)  # before HIDE_MS runs out
+    assert tool._card.isVisible() and tool._card.title() == "Third"
+    wait(max(SHOW_MS, HIDE_MS) + 100)
+    assert tool._card.isVisible() and tool._card.title() == "Third" and not hidden
 
 
 def test_hiding_the_tab_hides_the_card(make):
@@ -685,16 +703,13 @@ def test_redraw_hides_the_card_and_cancels_a_pending_show(make):
 
 
 def test_the_card_never_takes_focus_or_clicks(make):
-    import sys
-
     from PySide6.QtCore import Qt
 
     c = make()._card
     assert c.testAttribute(Qt.WA_ShowWithoutActivating)
     assert c.testAttribute(Qt.WA_TransparentForMouseEvents)
     assert c.windowFlags() & Qt.WindowTransparentForInput
-    if sys.platform != "darwin":
-        assert c.windowFlags() & Qt.WindowDoesNotAcceptFocus
+    assert c.windowFlags() & Qt.WindowDoesNotAcceptFocus
 
 
 def test_card_spot_flips_right_and_stays_on_screen():
