@@ -390,7 +390,10 @@ class PathArrowTool:
         self._choose.setVisible(self.trip is None and self._arrived is None)
         self._running.setVisible(self.trip is not None)
         world = self._world()
-        why = self._why(world)
+        # Keep the arrow steady: a frame that misses your position (the dot not found once,
+        # a clipped minimap not matched) keeps the arrow, and says nothing, for a moment.
+        holding = world is None and self._rect is not None and self._holds()
+        why = "" if holding else self._why(world)
         hint = HIDDEN if self.trip and self.trip.hidden_next(world) else ""
         texts = [t for t in (why, hint) if t]
         act = "\n".join(t for t in texts if t in ACTIONS)
@@ -401,7 +404,7 @@ class PathArrowTool:
         self._info.setVisible(bool(info))
         known = self._here is not None and not self._unread()
         self._start.setEnabled(known and self._matches.currentItem() is not None)
-        self._place_arrow(world, why)
+        self._place_arrow(world, holding)
 
     def _world(self) -> tuple[float, float] | None:
         """The player's world position, from a reading of the confirmed map only."""
@@ -463,21 +466,21 @@ class PathArrowTool:
         return ""  # a map that fits may still miss a frame: the arrow just hides
 
     def _holds(self) -> bool:
-        """A frame with no position and no reason for it (`_why` is empty): keep the arrow
-        where it was, if it's the same trip on the same map, for up to ARROW_HOLD_S."""
+        """For a frame with no position: keep the arrow where it was, if it's the same trip
+        on the same map, for up to ARROW_HOLD_S since it was last aimed."""
         if self._placed is None or self.arrow.isHidden():
             return False
         when, map_id, trip = self._placed
         same = trip is self.trip and self._here is not None and self._here.id == map_id
         return same and held(self._settings.get("arrow_steady", True), when, self._now)
 
-    def _place_arrow(self, world: tuple[float, float] | None, why: str = "") -> None:
+    def _place_arrow(self, world: tuple[float, float] | None, holding: bool = False) -> None:
         if not self._settings.get("arrow_on", True):
             self.arrow.hide()  # the route list still runs
             return
-        here, rect = self._here, self._rect
-        if world is None and not why and rect is not None and self._holds():
+        if holding:
             return  # a missed frame: the arrow stays where it was
+        here, rect = self._here, self._rect
         target = None if world is None or rect is None else self.trip.target(world)
         if target is None:
             self._placed = None

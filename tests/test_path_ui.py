@@ -174,7 +174,7 @@ def test_minimap_message_after_3s(make):
 
 
 def test_dot_missing_message_immediately(make):
-    tool = make()
+    tool = make(_unsteady())
     go(tool, "A", "C")
     feed(tool, title("A"), 1.0, view=None, times=1)
     assert tool._message.text() == OPEN
@@ -423,11 +423,19 @@ def test_steady_keeps_the_arrow_through_missed_frames_for_two_seconds(make):
     assert not tool.arrow.isVisible()
 
 
-def test_steady_hides_at_once_when_theres_a_reason(make):
+def test_steady_holds_through_a_frame_without_the_dot(make):
+    """The reader gives no minimap when it doesn't find the dot exactly once: the common
+    one-frame miss. Held, it says nothing; past the hold, the reason shows."""
     tool = make()
     go(tool, "A", "C")
-    feed(tool, title("A"), 1.0, view=None, times=1)  # the minimap closed: OPEN says so
+    feed(tool, title("A"), 1.0, view=None, times=1)
+    assert tool.arrow.isVisible()
+    assert not tool._message.isVisibleTo(tool.tab)  # no "Open your minimap" flash
+    feed(tool, title("A"), 1.5)  # the dot's back: aimed afresh
+    assert tool.arrow.isVisible()
+    feed(tool, title("A"), 4.5, view=None, times=1)  # closed for good: past the hold
     assert not tool.arrow.isVisible()
+    assert tool._message.text() == OPEN and tool._message.isVisibleTo(tool.tab)
 
 
 def test_steady_never_holds_past_stop_or_a_new_map(make):
