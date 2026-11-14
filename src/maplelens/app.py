@@ -19,13 +19,14 @@ from pathlib import Path
 
 from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QImage
-from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
 import maplelens
 from maplelens import capture, update, update_mac
 from maplelens.overlay import ABOUT, MENU_MARK, Box, Layer
 from maplelens.reader import InlineReader, ProcessReader, Rect
 from maplelens.readers import due, found, glyphs, ocr, quest_window
+from maplelens.settings_window import SettingsWindow
 from maplelens.store import data_dir, load_settings, save_settings
 from maplelens.tools.class_helper import data as class_data
 from maplelens.tools.class_helper.ui import MARKS, ClassHelperTool
@@ -668,6 +669,12 @@ def box_menu(box: Box) -> QMenu:
 
 
 HIDE, SHOW = f"Hide {APP_NAME}", f"Show {APP_NAME}"
+SETTINGS = "Settings…"
+
+
+def add_settings(box: Box, window: SettingsWindow) -> None:
+    """Settings…, above Quit: added before add_hide, so it comes just before Hide."""
+    box.add_menu_item(SETTINGS, window.open, at=-1)
 
 
 class Shown:
@@ -954,6 +961,8 @@ def main() -> int:
     add_build_menu(box, cls_tool)
     box.add_toggle(MARKS, settings["class_marks"], cls_tool.set_marks, at=-1)
     updates = update_check(box, settings, save, seen, time.time())
+    settings_window = SettingsWindow([("General", QWidget())])  # held: the menu links weakly
+    add_settings(box, settings_window)
     tray = make_tray(box, ICON, available=tray_available())  # held, or it leaves the tray
     shown = add_hide(box, layer, tray, click=sys.platform == "win32")
     add_about(box, updates)  # after Hide: just before Quit

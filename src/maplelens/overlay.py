@@ -266,6 +266,30 @@ def native_setup(widget: QWidget) -> None:
         overlay_mac.make_panel(widget)
 
 
+class FloatingWindow(QWidget):
+    """One of MapleLens's own windows (History, Settings): over the game, leaving it the
+    keyboard, as the box does. On the Mac, native_setup makes it a panel that does both.
+    Closing it doesn't end the app."""
+
+    def __init__(self):
+        super().__init__()
+        self.setAttribute(Qt.WA_QuitOnClose, False)
+        self.setWindowFlag(Qt.Tool)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        if sys.platform != "darwin":
+            self.setWindowFlag(Qt.WindowStaysOnTopHint)
+            self.setWindowFlag(Qt.WindowDoesNotAcceptFocus)
+
+    def open(self) -> None:
+        """Show it, or bring it forward if it's already open."""
+        self.show()
+        self.raise_()
+
+    def showEvent(self, event):
+        native_setup(self)
+        super().showEvent(event)
+
+
 OVERLAY = Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus
 
 
