@@ -4,43 +4,74 @@ An open-source overlay for **MapleStory Classic** that keeps you in the game.
 Instead of alt-tabbing to price sites, class guides and route finders, MapleLens
 reads what's on your screen and shows what you need on top of the game window.
 
+**[Download for Windows or Mac](https://github.com/or-keren/maplelens/releases/latest)** ·
+free and open source
+
 ![MapleLens over MapleStory Classic in the Kerning City subway: the Path tab lists a 12-map route to Sleepywood, and a yellow arrow over the character points to the next portal](docs/screenshots/hero.jpg)
+
+## Safe to use
+
+MapleLens only **looks at the screen**, the way you do. It takes pictures of the game
+window and draws its own window on top. It never:
+
+- reads or changes the game's memory, or hooks into the game in any way
+- touches the game's files or its network traffic
+- presses keys or clicks for you: no automation of any kind
 
 ## What it does
 
-**Path arrow** (above): pick a map, and the Path tab lists the route there while an arrow
-over your character points to the next portal.
+### Path arrow
 
-**EXP meter:** your EXP per hour and time to level, live. History keeps the average for
-every map you've trained on. Pin keeps a line of it on every other tab.
+Pick any map, and an arrow over your character points the way (above).
+
+- The Path tab lists every map on the route there.
+- The arrow points to the next portal, and to the NPC when you're headed to one.
+- Hidden portals get a hint: "stand on it and press ↑".
+
+### EXP meter
+
+Your EXP per hour and time to level, live.
+
+- A first estimate from your second kill, marked **measuring** until there's a minute of play.
+- Your session's average beside the last 5 minutes, across maps and levels.
+- **History** keeps the average for every map you've trained on, with the best maps for
+  your class and level at the top.
+- **Pin** keeps the EXP line on every other tab. If the EXP bar can't be read, the tab says
+  so in amber.
 
 ![The EXP tab showing 21,433 EXP an hour and level up in 3h 49m, over the History window: the best maps for a level 29 Rogue, with Transfer Area at 49,198 EXP an hour, then the average EXP per hour for each map, class and level](docs/screenshots/exp.jpg)
 
-**Class helper:** where to train for your class and level, with your best spot first and
-one click to set a route there, plus what comes next: job advancement, gear and stats.
+### Class helper
+
+Where to train for your class and level, and what comes next.
+
+- Your best training spot first, one click to set a route there.
+- Hover a spot to see its map, where each monster spawns, and their level, HP and EXP.
+- Pick your build; a Beginner picks the class they're heading for.
+- Job advancement, gear, and where to put AP and SP, marked right on the game's stat and
+  skill windows.
 
 ![The Class tab for a level 29 Rogue with 5 AP and 3 SP: three training spots with Transfer Area marked as the best at 879 EXP a minute, then the level 30 advancement and gear. Over the game's stat window a ring on LUK's + button says 5 here, and over the skill window a ring on Dark Sight's says 3 here](docs/screenshots/class.jpg)
 
-**Quest helper:** open a quest in the game and the Quests tab shows where to go for each
-NPC, monster and item it needs, one click to set a route there. Track quests to keep them.
-Quests you follow in the game's Quest Helper are tracked by themselves, and their targets
-drop off as you finish them. Each quest switches between Closest (the nearest map) and Best
-(the most monsters); quick quests start on Closest.
+### Quest helper
+
+Open a quest in the game, and the Quests tab shows where to go for each NPC, monster and
+item it needs, one click to set a route there.
+
+- Each quest's rewards: EXP, mesos, the items (the ones for your class) and what the rest
+  of its chain pays.
+- Track quests to keep them. Quests you follow in the game's Quest Helper are tracked by
+  themselves, and their targets drop off as you finish them.
+- Each quest switches between **Closest** (the nearest map) and **Best** (the most
+  monsters).
 
 ![The Quests tab next to the game's quest window: The Filing Error's Torn Ledger Pages row is outlined with Going · 5 maps away and a Stop button, the Path tab shows its running dot, and a yellow arrow by the character points the way](docs/screenshots/quests.jpg)
 
-## The promise: screen-reading only
+### The box
 
-MapleLens is **screen-reading only**. It may capture pixels of the game
-window and draw its own separate window on top. It must never:
-
-- read or write game process memory, or inject into / attach to the process
-- read, modify, or hook game files or the client's network traffic
-- send input (keys/clicks) to the game — no automation of any kind
-
-Every change is checked by `scripts/check_screen_only.py` in CI. That script is
-a speed bump against honest mistakes, not a security boundary. The rule itself
-is what matters, and pull requests that break it are not accepted.
+Drag it anywhere, and drag its corner to make it wider. **•••** on the box opens its menu.
+The tray icon (Windows) or the maple leaf in the menu bar (Mac) hides MapleLens and brings
+it back; it keeps recording while hidden.
 
 ## Requirements
 
@@ -129,12 +160,9 @@ in `~/Library/Application Support/MapleLens`; delete that folder to remove them 
 something goes wrong, attach `~/Library/Application Support/MapleLens/maplelens.log` to a
 bug report.
 
-## Roadmap
+## Coming next
 
-1. **EXP meter:** EXP/min, time to level, and history per map.
-2. **Path arrow:** routes drawn as an arrow over the game.
-3. **Class helper:** the guide's advice for your level (gear, training spots, AP/SP).
-4. **Prices:** market lookups without leaving the game.
+**Prices:** market lookups without leaving the game.
 
 ## Run from source (macOS, developers)
 
@@ -155,16 +183,12 @@ click **•••** on the box and use **Pick game window…**. The choice is sa
 Run the tests with `uv run pytest`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
 checks, the workflow and how releases are made.
 
-## Status
+The screen-reading-only rule is checked on every change by `scripts/check_screen_only.py`
+in CI. That script is a speed bump against honest mistakes, not a security boundary. The
+rule itself is what matters, and pull requests that break it are not accepted.
 
-> **Status: Phase 3: class helper (in progress).** Four tools are built: the EXP meter
-> (EXP/min, time to level, History window), the path arrow (points you to the next portal on
-> your route), the class helper (a Class tab with gear, training maps, AP and SP plans for
-> every 1st and 2nd job, plus marks on the game's stat and skill windows) and the quest
-> helper (a Quests tab that tracks quests, showing where to go for each NPC, monster and
-> item they need, follows the game's Quest Helper, and takes over while a quest window is
-> open in the game).
->
+## Credits
+
 > Map and portal data adapted from [meowdb](https://meowdb.com/msclassic).
 > Minimap and map pictures, item icons, monster pictures and stats, and portal types from [OSMS Data Explorer](https://osmsdataexplorer.com) (CC BY 4.0).
 > Quest data adapted from [meowdb](https://meowdb.com/msclassic) (NiaDB) and [OSMS Data Explorer](https://osmsdataexplorer.com) (CC BY 4.0).
