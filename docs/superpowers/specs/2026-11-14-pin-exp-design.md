@@ -29,10 +29,10 @@ hides the numbers.
 - **Toggle**: a secondary button next to History on the EXP tab, reading `Pin` while off
   and `Unpin` while on. Off by default. Saved as `settings["pin_exp"]` (a new key in
   `store.DEFAULTS`).
-- **The line**: `EXP  2.31%/h · Lvl in 1h 20m ›` at the bottom of the box, under the
+- **The line**: `EXP  2%/h · Lvl in 1h 20m ›` at the bottom of the box, under the
   tab's page and above the notice line. The grey label is `EXP` and the text is white.
-  It shows %/h and the time to level from the last-5-min rate. Raw EXP/h is left out:
-  it doesn't fit 214 px.
+  It shows %/h as a whole percent and the time to level, both from the last-5-min
+  rate. Raw EXP/h is left out: it doesn't fit 214 px.
 - **States**: `Measuring…` while measuring or with no rate yet, `Paused` while paused,
   and `Can't read bar` in the accent colour when the bar can't be read. It is never
   blank, and never shows old numbers as if they were live.

@@ -56,7 +56,7 @@ def pin_text(rate: Rate | None, waiting: bool, unread: bool = False) -> tuple[st
     if rate.paused:
         return "Paused", False
     eta = "—" if rate.minutes_to_level is None else format_duration(rate.minutes_to_level)
-    return f"{rate.pct_per_min * 60:.2f}%/h · Lvl in {eta}", False
+    return f"{rate.pct_per_min * 60:.0f}%/h · Lvl in {eta}", False
 
 
 def format_last(ts: float, now: float) -> str:
