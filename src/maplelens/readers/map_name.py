@@ -41,8 +41,8 @@ BG_TOL = 6
 # text snaps to the known titles: to the only title one letter away, else to one with a
 # similarity of at least SNAP_MIN and a lead of SNAP_LEAD over the runner-up.
 SNAP_MIN, SNAP_LEAD = 0.9, 0.1
-# Vision reads a trailing roman numeral as digits.
-ROMAN = {"1": "I", "11": "II", "111": "III"}
+# A trailing roman numeral misread: Vision gives digits ("111"), Windows lowercase L ("Ill").
+ROMAN = re.compile(r"\b[1Il]{1,3}$")
 # What tells numbered sibling maps apart: digits and roman numerals.
 NUMBERS = re.compile(r"\d+|\b[IVX]+\b")
 
@@ -64,7 +64,7 @@ def snap_title(text: str, titles: Collection[str]) -> str:
     """`text` as the known title it most clearly resembles, else unchanged."""
     if text in titles:
         return text
-    roman = re.sub(r"\b(1|11|111)$", lambda m: ROMAN[m[1]], text)
+    roman = ROMAN.sub(lambda m: "I" * len(m[0]), text)
     if roman in titles:
         return roman
     # Windows OCR can drop a title's last word ("The Forest North of" for "... of Ellinia"),

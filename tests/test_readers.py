@@ -407,6 +407,9 @@ V = "Victoria Road / "
         # One wrong letter, with a very similar title next to the right one.
         (V + "The Rafn-Forest East of Henesys", V + "The Rain-Forest East of Henesys"),
         ("Dungeon / Ant Tunmel II", "Dungeon / Ant Tunnel II"),
+        # Windows OCR reads a roman numeral's I as a lowercase L (live 2560x1440 frame).
+        ("Warning Street / Deep Valley Ill", "Warning Street / Deep Valley III"),
+        ("Warning Street / Deep Valley Il", "Warning Street / Deep Valley II"),
     ],
 )
 def test_snap_misreads(text, want):
@@ -427,11 +430,6 @@ def test_snap_misreads(text, want):
     ],
 )
 def test_snap_one_letter_never_changes_a_number(text):
-    assert snap_title(text, known_titles()) == text
-
-
-def test_snap_one_letter_from_two_titles_is_kept():
-    text = "Dungeon / Ant Tunnel Il"  # one letter from both Ant Tunnel I and Ant Tunnel II
     assert snap_title(text, known_titles()) == text
 
 
