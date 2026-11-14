@@ -406,6 +406,8 @@ class Box(QWidget):
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self._tab_buttons: list[QPushButton] = []
         self._tab_dots: list[QLabel] = []
+        self._tab_shown: list[bool] = []  # a tab turned off keeps its index, only hidden
+        self._dot_on: list[bool] = []  # the dot each tab was given, shown while the tab is
         self._strip_row = QWidget()  # holds the strip, so it hides as one
         self._strip = QHBoxLayout(self._strip_row)
         self._strip.setContentsMargins(0, 0, 0, 0)
@@ -528,6 +530,8 @@ class Box(QWidget):
         dot.hide()
         self._tab_buttons.append(button)
         self._tab_dots.append(dot)
+        self._tab_shown.append(True)
+        self._dot_on.append(False)
         at = self._strip.count() - 1  # before the trailing stretch
         self._strip.insertWidget(at, button)
         self._strip.insertWidget(at + 1, dot, 0, Qt.AlignVCenter)
@@ -539,6 +543,9 @@ class Box(QWidget):
         return self._current
 
     def select(self, index: int) -> None:
+        """Show tab `index`; a hidden tab can't be shown, and the box stays where it is."""
+        if not self._tab_shown[index]:
+            return
         self._current = index
         for j, b in enumerate(self._tab_buttons):
             color, line = (VALUE_COLOR, ACCENT) if j == index else (LABEL_COLOR, "transparent")
@@ -564,7 +571,10 @@ class Box(QWidget):
     def _show_footer(self) -> None:
         if self._footer is not None:
             tabs = not self._about_open and self._status_text is None
-            self._footer.setVisible(self._footer_on and tabs and self._current != self._footer_tab)
+            owner = self._footer_tab
+            mine = 0 <= owner < len(self._tab_shown) and not self._tab_shown[owner]
+            on = self._footer_on and not mine  # its tab turned off: the line goes with it
+            self._footer.setVisible(on and tabs and self._current != owner)
 
     def set_status(self, text: str | None) -> None:
         """Show `text` in place of the tabs; None brings the tabs back.
@@ -634,7 +644,20 @@ class Box(QWidget):
             on_dismiss()
 
     def set_tab_dot(self, index: int, on: bool) -> None:
-        self._tab_dots[index].setVisible(on)
+        self._dot_on[index] = on
+        self._tab_dots[index].setVisible(on and self._tab_shown[index])
+
+    def set_tab_shown(self, index: int, on: bool) -> None:
+        """Hide tab `index` (its button, dot and page), or show it again. The other tabs keep
+        their indexes. Hiding the open tab shows the first one still shown."""
+        self._tab_shown[index] = on
+        self._tab_buttons[index].setVisible(on)
+        self._tab_dots[index].setVisible(on and self._dot_on[index])
+        if not on and self._current == index:
+            first = next((i for i, shown in enumerate(self._tab_shown) if shown), None)
+            if first is not None:
+                self.select(first)
+        self._show_footer()
 
     def allow_typing(self, on: bool) -> None:
         """Let the box take keyboard focus (only while a text field needs it).
