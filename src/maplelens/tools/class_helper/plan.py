@@ -184,7 +184,7 @@ class Card:
 def respawn_text(lo: float, hi: float) -> str:
     unit, div = ("min", 60) if lo >= 120 else ("s", 1)
     a, b = lo / div, hi / div
-    span = f"{a:g}" if a == b else f"{a:g}–{b:g}"
+    span = f"{a:g}" if a == b else f"{a:g}\N{EN DASH}{b:g}"
     return f"every {span} {unit}"
 
 
