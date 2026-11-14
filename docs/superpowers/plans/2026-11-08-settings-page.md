@@ -214,9 +214,9 @@ a slider and a real `_Arrow` as the preview.
 
 ### Task T8: arrow colour (was: keep the arrow steady)
 
-**Description:** Built first as `arrow_steady` (a 2 s hold through missed frames); Daniel
-tried it and saw no blinking to fix, so it was taken out, with Checkpoint B's flicker test.
-In its place: `arrow_color`, one of six `ARROW_COLORS` swatches in the Path card, validated
+**Description:** Built first as `arrow_steady`, a checkbox for a 2 s hold through missed
+frames. The checkbox is gone; the hold stays, always on (without it the arrow hardly showed
+on Daniel's map). In the checkbox's place: `arrow_color`, one of six `ARROW_COLORS` swatches in the Path card, validated
 in `clean`. `_Arrow` paints in its `color`; the preview follows.
 
 **Acceptance criteria:**
@@ -398,6 +398,6 @@ settings are. Run the spec's whole by-hand list.
 Phase 1 (T1–T6) built on `feat/settings-window`, 2026-11-14: the four checks pass and the
 window was drawn offscreen; Checkpoint A's by-hand checks on Windows and the Mac are still to
 do. Phase 2 (T7–T8) built on `feat/arrow-options`, stacked on it,
-2026-11-14: show, size and colour; steady mode was built, tried and taken out. Phases 1 and 2 were
+2026-11-14: show, size and colour; the 2 s hold through missed frames is built in, with no setting. Phases 1 and 2 were
 refreshed against v0.6.3 on 2026-11-14, and Phases 4 and 5 rewritten on top of #79 the same
 day. Phase 3 waits for the `build-choice` decision.

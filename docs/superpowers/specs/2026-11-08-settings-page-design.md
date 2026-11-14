@@ -169,8 +169,15 @@ Path section:
   window never takes the keyboard; bright colours that read over the maps with the arrow's
   dark outline. The chosen one is ringed; each names its colour in a tooltip.
 - The arrow's centre stays put as it grows. `ARROW_DY` doesn't change.
-- **No steady mode** (Daniel, 2026-11-14). A "Keep the arrow steady" hold through missed
-  frames was built and tried; Daniel saw no blinking to fix either way, so it was taken out.
+- **The arrow holds through missed frames, always, with no setting** (Daniel, 2026-11-14).
+  It was first built as a "Keep the arrow steady" checkbox. Then the checkbox and the hold
+  were both taken out, and without the hold the arrow hardly showed on Daniel's map. So the
+  hold is built in: a frame that misses your position keeps the arrow where it was for up to
+  `ARROW_HOLD_S = 2.0` s, on the same map and trip, whatever the miss's reason. The common
+  miss is a frame where the reader doesn't find the "you" dot exactly once, which comes back
+  as no minimap ("Open your minimap"). That line is held back too while the arrow is held;
+  past 2 s the arrow hides and the line shows. A frame that *has* a position but no target
+  (arrived, or nowhere to point), Stop, or a new map hides it at once.
 - **No blink or pulse option** (Daniel).
 - *(Refresh 2026-11-14: nothing upstream touched the arrow. Only line numbers moved.)*
 

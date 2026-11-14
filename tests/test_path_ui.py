@@ -112,9 +112,10 @@ def test_start_shows_arrow_and_header(make):
 def test_one_frame_misread_does_not_reroute(make):
     tool = make()
     go(tool, "A", "C")
-    steps = tool.trip.steps
+    steps, angle = tool.trip.steps, tool.arrow.angle
     feed(tool, title("X"), 1.0, times=1)
-    assert not tool.arrow.isVisible()  # not aimed with an unconfirmed map's minimap
+    assert tool.arrow.isVisible() and tool.arrow.angle == angle  # held, not re-aimed with an
+    # unconfirmed map's minimap
     feed(tool, title("A"), 2.0, times=1)
     feed(tool, None, 3.0, times=1)
     feed(tool, title("A"), 4.0, times=1)
@@ -169,11 +170,16 @@ def test_minimap_message_after_3s(make):
     assert not tool._message.isVisibleTo(tool.tab) and tool.arrow.isVisible()
 
 
-def test_dot_missing_message_immediately(make):
+def test_dot_missing_message_after_the_hold(make):
+    """The reader gives no minimap when it doesn't find the dot exactly once: the common
+    one-frame miss. Held, it says nothing; past the hold, the reason shows."""
     tool = make()
-    go(tool, "A", "C")
+    go(tool, "A", "C")  # last aimed at t=0.5
     feed(tool, title("A"), 1.0, view=None, times=1)
-    assert tool._message.text() == OPEN
+    assert tool.arrow.isVisible()
+    assert not tool._message.isVisibleTo(tool.tab)  # no "Open your minimap" flash
+    feed(tool, title("A"), 2.6, view=None, times=1)  # 2.1 s since it was last aimed
+    assert tool._message.text() == OPEN and tool._message.isVisibleTo(tool.tab)
     assert not tool.arrow.isVisible()
 
 
@@ -275,8 +281,9 @@ def test_same_title_neighbours_told_apart_by_minimap_size(make):
     tool._start.click()
     assert [s.map_id for s in tool.trip.steps] == ["P", "Q", "R"]
     assert tool.arrow.isVisible()
+    angle = tool.arrow.angle
     feed(tool, title("Q"), 1.0, view=q_view, times=1)  # same title, Q's minimap
-    assert not tool.arrow.isVisible()  # never aimed with P's minimap formula
+    assert tool.arrow.angle == angle  # held: never re-aimed with P's minimap formula
     feed(tool, title("Q"), 1.5, view=q_view, times=1)
     assert tool._header.text() == "To Rose · 2 of 3"
     assert tool.arrow.isVisible() and tool.arrow.angle == approx(
@@ -393,8 +400,40 @@ def test_unclipped_frame_miss_has_no_line(make):
     tool = make()
     go(tool, "A", "C")
     feed(tool, title("A"), 1.0, view=MISS, times=1)
-    assert not tool.arrow.isVisible()
     assert not tool._message.isVisibleTo(tool.tab) and not tool._info.isVisibleTo(tool.tab)
+
+
+@pytest.mark.parametrize(
+    "last, now, kept", [(5.0, 5.0, True), (5.0, 7.0, True), (5.0, 7.01, False), (None, 5.0, False)]
+)
+def test_held(last, now, kept):
+    from maplelens.tools.path_arrow.ui import held
+
+    assert held(last, now) is kept
+
+
+def test_a_missed_frame_keeps_the_arrow_for_two_seconds(make):
+    tool = make()
+    go(tool, "A", "C")  # last aimed at t=0.5
+    where, angle = tool.arrow.pos(), tool.arrow.angle
+    feed(tool, title("A"), 1.0, view=MISS, times=1)
+    feed(tool, title("A"), 2.5, view=MISS, times=1)
+    assert tool.arrow.isVisible() and tool.arrow.pos() == where and tool.arrow.angle == angle
+    feed(tool, title("A"), 2.6, view=MISS, times=1)  # 2.1 s since it was last aimed
+    assert not tool.arrow.isVisible()
+
+
+def test_the_hold_never_outlasts_stop_or_a_new_map(make):
+    tool = make()
+    go(tool, "A", "C")
+    tool.stop()
+    assert not tool.arrow.isVisible()
+    go(tool, "A", "C", 1.0)
+    feed(tool, title("B"), 2.0)  # on B now, aimed afresh
+    assert tool.arrow.isVisible()
+    tool._here = MAPS["A"]  # as if the map changed under a held arrow
+    feed(tool, None, 2.6, view=MISS, times=1)
+    assert not tool.arrow.isVisible()
 
 
 @pytest.mark.parametrize("size", [24, 36, 72])

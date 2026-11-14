@@ -49,6 +49,9 @@ ARROW_SIZE = 36  # logical px, the arrow's square, unless Settings says otherwis
 SHOW_ARROW = "Show the arrow"
 ARROW_SIZE_LABEL = "Arrow size"
 ARROW_COLOR_LABEL = "Arrow colour"
+# A frame that misses your position (the dot not found once, a clipped minimap not matched)
+# keeps the arrow where it was this long, so it doesn't blink
+ARROW_HOLD_S = 2.0
 _PREVIEW = ARROW_SIZES[-1] + 4  # the preview's square: the largest arrow fits
 # Arrived once the NPC's spot is on screen this many normalized px inside the side edges:
 # the camera can sit ~128 px off the model's sideways (see to_screen).
@@ -63,6 +66,11 @@ ACTIONS = (OPEN, HIDDEN)  # yellow: the player can act on these now; the rest ar
 MATCH_ROWS = 3  # visible matches; the list scrolls for the rest
 _DONE, _AHEAD, _NUM = "#6f7d93", "#c9d3e3", "#7b8aa3"  # mockup 3's route list
 _STYLE = FIELD_STYLE + f"QCheckBox {{ color: {VALUE_COLOR}; }}"
+
+
+def held(last_seen: float | None, now: float) -> bool:
+    """Keep showing the arrow through a frame that has no position?"""
+    return last_seen is not None and now - last_seen <= ARROW_HOLD_S
 
 
 class _Arrow(QWidget):
@@ -190,6 +198,7 @@ class PathArrowTool:
             layer, settings.get("arrow_size", ARROW_SIZE), settings.get("arrow_color", ACCENT)
         )
         self._preview: _Arrow | None = None  # in the Settings window, once it's built
+        self._placed: tuple[float, str, Trip] | None = None  # (when, map id, trip) last aimed
         self._tab_w = TAB_W
         self.tab = self._build_tab(settings["path_taxi"])
         self._render()
@@ -423,8 +432,11 @@ class PathArrowTool:
         self._choose.setVisible(self.trip is None and self._arrived is None)
         self._running.setVisible(self.trip is not None)
         world = self._world()
+        # A frame that misses your position keeps the arrow, and says nothing, for a moment
+        holding = world is None and self._rect is not None and self._holds()
+        why = "" if holding else self._why(world)
         hint = HIDDEN if self.trip and self.trip.hidden_next(world) else ""
-        texts = [t for t in (self._why(world), hint) if t]
+        texts = [t for t in (why, hint) if t]
         act = "\n".join(t for t in texts if t in ACTIONS)
         info = "\n".join(t for t in texts if t not in ACTIONS)
         self._message.setText(act)
@@ -433,7 +445,7 @@ class PathArrowTool:
         self._info.setVisible(bool(info))
         known = self._here is not None and not self._unread()
         self._start.setEnabled(known and self._matches.currentItem() is not None)
-        self._place_arrow(world)
+        self._place_arrow(world, holding)
 
     def _world(self) -> tuple[float, float] | None:
         """The player's world position, from a reading of the confirmed map only."""
@@ -494,13 +506,25 @@ class PathArrowTool:
             return "No arrow on this part of the map yet"
         return ""  # a map that fits may still miss a frame: the arrow just hides
 
-    def _place_arrow(self, world: tuple[float, float] | None) -> None:
+    def _holds(self) -> bool:
+        """For a frame with no position: keep the arrow where it was, if it's the same trip
+        on the same map, for up to ARROW_HOLD_S since it was last aimed."""
+        if self._placed is None or self.arrow.isHidden():
+            return False
+        when, map_id, trip = self._placed
+        same = trip is self.trip and self._here is not None and self._here.id == map_id
+        return same and held(when, self._now)
+
+    def _place_arrow(self, world: tuple[float, float] | None, holding: bool = False) -> None:
         if not self._settings.get("arrow_on", True):
             self.arrow.hide()  # the route list still runs
             return
+        if holding:
+            return  # a missed frame: the arrow stays where it was
         here, rect = self._here, self._rect
         target = None if world is None or rect is None else self.trip.target(world)
         if target is None:
+            self._placed = None
             self.arrow.hide()
             return
         _, _, w, h = rect  # game client, physical px
@@ -512,6 +536,7 @@ class PathArrowTool:
         self.arrow.move(round(x - size / 2), round(y - size / 2))
         self.arrow.show()
         self.arrow.update()
+        self._placed = (self._now, here.id, self.trip)
 
     def settings_section(self) -> QWidget:
         """The Path section of the Settings window: the arrow's settings."""
