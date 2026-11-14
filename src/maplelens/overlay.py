@@ -336,6 +336,9 @@ class Box(QWidget):
         self._game_w = 0
         self._drag_from: QPoint | None = None
         self.touches = 0  # mouse presses on the box or anything in it, so far
+        self._footer: QWidget | None = None  # a line under every tab but its owner's
+        self._footer_tab = -1
+        self._footer_on = False
         self._count = _Touches(self)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
@@ -483,6 +486,23 @@ class Box(QWidget):
             )
         for j in range(self._page_col.count()):
             self._page_col.itemAt(j).widget().setVisible(j == index)
+        self._show_footer()
+
+    def add_footer(self, widget: QWidget, tab: int) -> None:
+        """A line under the pages, kept hidden while tab `tab` (its owner's) is current."""
+        layout = self.layout()
+        layout.insertWidget(layout.indexOf(self._pages) + 1, widget)
+        self._footer, self._footer_tab = widget, tab
+        self._show_footer()
+
+    def set_footer_shown(self, on: bool) -> None:
+        self._footer_on = on
+        self._show_footer()
+
+    def _show_footer(self) -> None:
+        if self._footer is not None:
+            tabs = not self._about_open and self._status_text is None
+            self._footer.setVisible(self._footer_on and tabs and self._current != self._footer_tab)
 
     def set_status(self, text: str | None) -> None:
         """Show `text` in place of the tabs; None brings the tabs back.
@@ -531,6 +551,7 @@ class Box(QWidget):
         self._status.setVisible(status)
         self._strip_row.setVisible(not about and text is None)
         self._pages.setVisible(not about and text is None)
+        self._show_footer()
         self._grip.setVisible(not status)  # the status line sets its own width
         row = Qt.AlignTop if status else Qt.AlignVCenter
         self._top.setAlignment(self._menu_button, row | Qt.AlignRight)

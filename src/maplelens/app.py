@@ -918,8 +918,15 @@ def main() -> int:
 
     conn = open_db(data_dir() / "maplelens.db")
     cls_data = class_data.load()
-    tool = ExpMeterTool(settings, conn, cls_data.line)
-    # the lambda defers the lookup: `box` is built from path_tool on the next line
+    # the lambdas defer the lookup: `box` is built from the tools below
+    tool = ExpMeterTool(
+        settings,
+        conn,
+        cls_data.line,
+        save=save,
+        show_pin=lambda on: box.set_footer_shown(on),  # noqa: PLW0108
+        open_tab=lambda: box.select(0),
+    )
     path_tool = PathArrowTool(settings, save, layer, lambda on: box.allow_typing(on))  # noqa: PLW0108
     seen: set[str] = set()  # error types/messages already logged
 
@@ -941,6 +948,8 @@ def main() -> int:
         path_tool.hops,
     )  # its go stays on the Quests tab while a trip runs
     box = build_box(settings, save, [tool, path_tool, cls_tool, quest_tool], pick)
+    box.add_footer(tool.pin_line, 0)  # the EXP line, under every tab but EXP's own
+    box.set_footer_shown(tool.pinned)
     setup_screen_recording(box)
     add_build_menu(box, cls_tool)
     box.add_toggle(MARKS, settings["class_marks"], cls_tool.set_marks, at=-1)

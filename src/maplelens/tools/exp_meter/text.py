@@ -45,6 +45,20 @@ def box_lines(
     return [[(label, [exp, pct]), (s_label, [s_exp, ""])], [("Level up in", [eta])]]
 
 
+def pin_text(rate: Rate | None, waiting: bool, unread: bool = False) -> tuple[str, bool]:
+    """The pinned EXP line on the other tabs: (text, in the accent colour)."""
+    if waiting:
+        return "Waiting for game", False
+    if unread:
+        return "Can't read bar", True
+    if rate is None or rate.early:
+        return "Measuring…", False
+    if rate.paused:
+        return "Paused", False
+    eta = "—" if rate.minutes_to_level is None else format_duration(rate.minutes_to_level)
+    return f"{rate.pct_per_min * 60:.2f}%/h · Lvl in {eta}", False
+
+
 def format_last(ts: float, now: float) -> str:
     day = datetime.fromtimestamp(ts).date()
     days_ago = (date.fromtimestamp(now) - day).days

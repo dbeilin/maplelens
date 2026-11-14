@@ -12,6 +12,7 @@ DEFAULTS = {
     "jump_factor": 5,
     "boxes": {},
     "tab_width": None,  # the box's tabs, once the player has dragged its corner
+    "pin_exp": False,  # the EXP line on every other tab
     "path_taxi": True,
     "class_builds": {},  # job -> the build name picked in the Class tab
     "class_marks": True,  # the AP/SP marks on the game's stat and skill windows

@@ -73,6 +73,47 @@ def test_tab_dot(monkeypatch):
     assert not box._tab_dots[1].isVisibleTo(box)
 
 
+def _footer_box(monkeypatch):
+    """Two tabs, a footer owned by tab 0, turned on, on tab 1."""
+    from PySide6.QtWidgets import QLabel
+
+    box = _box(monkeypatch)
+    box.add_tab("A", QLabel())
+    box.add_tab("B", QLabel())
+    line = QLabel("pin")
+    box.add_footer(line, 0)
+    box.set_footer_shown(True)
+    box.select(1)
+    return box, line
+
+
+def test_footer_shows_on_other_tabs_only_when_on(monkeypatch):
+    box, line = _footer_box(monkeypatch)
+    assert line.isVisibleTo(box)
+    box.set_footer_shown(False)
+    assert not line.isVisibleTo(box)
+
+
+def test_footer_follows_select(monkeypatch):
+    box, line = _footer_box(monkeypatch)
+    box.select(0)  # its own tab: the full numbers are there
+    assert not line.isVisibleTo(box)
+    box.select(1)  # as QuestFocus does
+    assert line.isVisibleTo(box)
+
+
+def test_footer_hides_with_status_and_about(monkeypatch):
+    box, line = _footer_box(monkeypatch)
+    box.set_status("Looking for the game")
+    assert not line.isVisibleTo(box)
+    box.set_status(None)
+    assert line.isVisibleTo(box)
+    box.show_about("1.0", "", "")
+    assert not line.isVisibleTo(box)
+    box.close_about()
+    assert line.isVisibleTo(box)
+
+
 def test_allow_typing_toggles_focus_flag(monkeypatch):
     from PySide6.QtCore import Qt
 
