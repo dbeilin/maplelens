@@ -1,7 +1,7 @@
 """A quest's rewards as the Quests tab shows them: the closed line and the opened groups."""
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from maplelens.tools.quest_helper.data import Quest, QuestData
 from maplelens.tools.quest_helper.plan import TIMES
@@ -101,10 +101,9 @@ def _class_label(classed: list, job_branch: str | None) -> str:
     return f"{base}:"
 
 
-def details(data: QuestData, quest: Quest, job_branch: str | None) -> tuple[Group | str, ...]:
-    items = quest.rewards.items
+def _groups(data: QuestData, items, job_branch: str | None) -> list[Group]:
     plain = [r for r in items if not r.cls]
-    out: list[Group | str] = []
+    out = []
     for kind, label in (("always", ""), ("pick", "You pick 1 of:"), ("random", "Random, 1 of:")):
         if group := tuple(_shown(data, r) for r in plain if r.kind == kind):
             out.append(Group(label, group))
@@ -116,20 +115,51 @@ def details(data: QuestData, quest: Quest, job_branch: str | None) -> tuple[Grou
                 tuple(_shown(data, r, job_branch is None) for r in classed),
             )
         )
+    return out
+
+
+def _own(data: QuestData, quest: Quest, job_branch: str | None) -> list[Group | str]:
+    out: list[Group | str] = list(_groups(data, quest.rewards.items, job_branch))
     if line := _contribution(quest):
         out.append(line)
+    return out
+
+
+def _chain(data: QuestData, rest: list[Quest], job_branch: str | None) -> list[Group]:
+    """What the rest of the chain gives: the items it always gives in one group, each item
+    once with its counts added, then each quest's pick and random groups under its name.
+    Class items only for a known class: every class's would be too many."""
+    total: dict = {}
+    choices = []
+    for q in rest:
+        mine = [r for r in q.rewards.items if not r.cls or r.cls == job_branch]
+        for r in mine:
+            if r.kind == "always":
+                key = replace(r, count=0)
+                total[key] = total.get(key, 0) + r.count
+        choices += [
+            Group(f"{q.name}: {g.label[0].lower()}{g.label[1:]}", g.items)
+            for g in _groups(data, [r for r in mine if r.kind != "always"], job_branch)
+        ]
+    always = tuple(_shown(data, replace(r, count=n)) for r, n in total.items())
+    return ([Group("", always)] if always else []) + choices
+
+
+def details(data: QuestData, quest: Quest, job_branch: str | None) -> tuple[Group | str, ...]:
     rest = chain_rest(data, quest)
     money = _money(sum(q.rewards.exp for q in rest), sum(q.rewards.mesos for q in rest))
-    if money:
+    chain = _chain(data, rest, job_branch)
+    out = _own(data, quest, job_branch)
+    if money or chain:
         n = len(rest)
-        out.append(f"Rest of chain ({n} quest{'s' * (n > 1)}): +{money}")
-    return tuple(out)
+        out.append(f"Rest of chain ({n} quest{'s' * (n > 1)}):" + (f" +{money}" if money else ""))
+    return tuple(out + chain)
 
 
 def summary(data: QuestData, quest: Quest) -> str:
     if money := _money(quest.rewards.exp, quest.rewards.mesos):
         return money
-    first = next((x for x in details(data, quest, None) if isinstance(x, Group)), None)
+    first = next((x for x in _own(data, quest, None) if isinstance(x, Group)), None)
     if first:
         return first.items[0].tip if len(first.items) == 1 else f"{len(first.items)} items"
     return _contribution(quest) or ""
