@@ -16,6 +16,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication,
+    QButtonGroup,
     QCheckBox,
     QHBoxLayout,
     QLabel,
@@ -36,6 +37,7 @@ VALUE_PT, VALUE_COLOR = 12, "#ffffff"
 ACCENT = "#ffcc33"  # "do this": the selected tab, the main button, points to spend
 FIELD, DARK, HERE_BG, EDGE = "#0b0f15", "#2a1d00", "#2c3a50", "#3d4b63"
 CHIP_BG, INFO_ICON = "#3a2e08", "#7fa8ff"
+DIM = "#5b6678"  # a setting greyed out (its tool is off), or a button that can't act now
 BOX_FILL = (16, 18, 24, 224)  # RGBA: the box, and the marks' tags over the game
 BOX_EDGE = (255, 255, 255, 20)  # RGBA: a thin edge, so the box reads on any map
 FIELD_STYLE = f"""
@@ -52,7 +54,8 @@ QPushButton {{ background: {ACCENT}; color: {DARK}; font-weight: bold; border: 0
 QPushButton:disabled {{ background: {HERE_BG}; color: {LABEL_COLOR}; }}""",
     "secondary": f"""
 QPushButton {{ background: transparent; color: #e6edf7; border: 1px solid {EDGE};
-    border-radius: 4px; padding: 3px; }}""",
+    border-radius: 4px; padding: 3px; }}
+QPushButton:disabled {{ color: {DIM}; border-color: {HERE_BG}; }}""",
 }
 # Every tab's width at first, and at least: the box's width less its 12 px side margins.
 # It fits four tab titles and the Path tab's dot at the strip's 14 px spacing, in FONT:
@@ -267,9 +270,6 @@ def native_setup(widget: QWidget) -> None:
         overlay_mac.make_panel(widget)
 
 
-DIM = "#5b6678"  # a setting greyed out: its tool is off
-
-
 class _PaintedCheck(QCheckBox):
     """A checkbox drawn in the box's colours; its whole row takes the click, and it never
     takes focus."""
@@ -338,6 +338,34 @@ class ToolSwitch(_PaintedCheck):
         p.setPen(Qt.NoPen)
         p.setBrush(QColor(DARK if on else LABEL_COLOR))
         p.drawEllipse(QRectF(15 if on else 3, top + 3, 10, 10))
+
+
+class _PaintedRadio(_PaintedCheck):
+    """One of a setting's choices: a ring, filled yellow when chosen."""
+
+    def _paint_mark(self, p: QPainter, top: float) -> None:
+        on, live = self.isChecked(), self.isEnabled()
+        p.setPen(QPen(QColor((ACCENT if on else EDGE) if live else DIM), 1))
+        p.setBrush(QColor(FIELD))
+        p.drawEllipse(QRectF(0.5, top + 1.5, 13, 13))
+        if on:
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(ACCENT if live else DIM))
+            p.drawEllipse(QRectF(4, top + 5, 6, 6))
+
+
+def setting_choice(
+    choices: dict[str, str], chosen: str, on_change: Callable[[str], None]
+) -> list[QCheckBox]:
+    """A setting's choices for the Settings window, one row each ({value: text}); a click on
+    one picks it at once, and the chosen one can't be clicked off."""
+    rows = [_PaintedRadio(text) for text in choices.values()]
+    group = QButtonGroup(rows[0])  # one at a time; Qt deletes it with the first row
+    for value, row in zip(choices, rows, strict=True):
+        row.setChecked(value == chosen)
+        group.addButton(row)
+        row.toggled.connect(lambda on, value=value: on and on_change(value))
+    return rows
 
 
 def setting_box(text: str, checked: bool, on_change: Callable[[bool], None]) -> QCheckBox:

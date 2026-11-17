@@ -84,3 +84,20 @@ def test_arrow_colour_must_be_one_offered(tmp_path, saved, loaded):
     p = tmp_path / "s.json"
     save_settings(p, {"arrow_color": saved})
     assert load_settings(p)["arrow_color"] == loaded
+
+
+@pytest.mark.parametrize(
+    "saved, loaded",
+    [("manual", "manual"), ("auto", "auto"), ("Manual", "auto"), (True, "auto"), ([], "auto"),
+     (None, "auto")],
+)  # fmt: skip
+def test_the_session_mode_falls_back_to_auto(tmp_path, saved, loaded):
+    p = tmp_path / "s.json"
+    save_settings(p, {"exp_session_mode": saved})
+    assert load_settings(p)["exp_session_mode"] == loaded
+
+
+def test_an_older_file_tracks_sessions_automatically(tmp_path):
+    p = tmp_path / "s.json"
+    save_settings(p, {"window_title": "Maple"})
+    assert load_settings(p)["exp_session_mode"] == "auto"

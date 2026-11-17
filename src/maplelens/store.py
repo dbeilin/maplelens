@@ -13,6 +13,9 @@ DEFAULTS = {
     "boxes": {},
     "tab_width": None,  # the box's tabs, once the player has dragged its corner
     "pin_exp": False,  # the EXP line on every other tab
+    # "auto": a session tracks by itself and ends after 30 minutes without EXP; "manual":
+    # it tracks between the EXP tab's Start and Pause, and ends on Reset
+    "exp_session_mode": "auto",
     "path_taxi": True,
     "path_best": True,  # the Path tab's places: Best (True) or Closest (False)
     "class_builds": {},  # job -> the build name picked in the Class tab
@@ -67,6 +70,7 @@ CHECKS = {
     "quests_on": _is_bool,
     "arrow_on": _is_bool,
     "arrow_color": lambda value: isinstance(value, str) and value in ARROW_COLORS,
+    "exp_session_mode": lambda value: value in ("auto", "manual"),  # a tuple: [] isn't hashable
 }
 # key -> a fix of a saved value: the value to keep, or None for the default
 FIXES = {"arrow_size": _arrow_size}

@@ -246,10 +246,11 @@ in the EXP section:
   was pressed, and the live rate starts measuring again. The session's totals go on from
   where they were. *(My call. It keeps #79's session arithmetic untouched; `meter.py` gains
   only the carry-over and a switch for the 30-minute split, which manual turns off.)*
-- **Switching mode:** a running session carries on. `auto` → `manual` while tracking: it runs
-  until Reset, with no 30-minute split from then. `manual` → `auto`: tracking starts if it
-  wasn't, a paused session goes on (auto has no buttons to unpause it), and the split applies
-  from then.
+- **Switching mode:** `auto` → `manual`: the running session ends and is saved, as Reset
+  does, and nothing counts until Start (Daniel, 2026-11-17, after trying it: choosing manual
+  means "wait for my Start"; first built so the session carried on, which kept counting).
+  `manual` → `auto`: tracking starts if it wasn't, a paused session goes on (auto has no
+  buttons to unpause it), and the split applies from then.
 - **The state machine is pure:** a small class in `exp_meter/session.py`, with no Qt, that
   takes start, pause, reset, gain, tick and mode events.
 
@@ -259,8 +260,15 @@ in the EXP section:
   in every mode, and in the pinned line (Daniel). "Paused" then means only a manual Pause.
 - **Manual, not tracking:** the left label is "Press Start", the session label is "Session",
   every value is `—`. The pinned line says "Press Start".
-- **Manual, paused:** the left label is "Paused" and its values are `—`; the session column
-  keeps its numbers so far (Daniel). The pinned line says "Paused".
+- **Manual mode's timer** (Daniel, 2026-11-17): the session label shows a stopwatch,
+  "Session · 4:05" (then "1:04:05"), from Start, in place of auto's active time. It counts
+  time tracked, whether or not anything is killed; it holds while paused, goes on after
+  Resume and clears on Reset. The session's EXP/h still uses active time. Auto keeps #79's
+  label.
+- **Manual, paused:** the left label is "Paused", and every number stays as it was at the
+  Pause: the live rate, Level up in and the session column (Daniel, 2026-11-17: first built
+  with the live values cleared to `—`). The pinned line says "Paused · 2.31%/h". After
+  Resume the live rate measures afresh from a new baseline, as before.
 - **Manual, tracking:** as auto. "Can't read bar" and "waiting for game" keep their priority.
 - The rows stay the same in every state, so nothing jumps (the no-blink update in `_show`).
 
@@ -271,7 +279,7 @@ Pin row, one row of two, all `Qt.NoFocus`:
 |---|---|---|
 | Not tracking | **Start** (primary) | disabled |
 | Tracking | Pause (secondary) | enabled |
-| Paused | **Start** (primary) | enabled |
+| Paused | **Resume** (primary) | enabled |
 
 ```
 Last 5 min      Session · 1h 20m
