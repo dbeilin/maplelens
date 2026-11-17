@@ -49,7 +49,7 @@ from maplelens.tools.exp_meter.text import (
 _FLUSH_S = 60
 _UNREAD_S = 10  # the bar unreadable this long, with the game found: say so
 _COLUMNS = ["Map", "Class", "Lvl", "Avg EXP/h", "Avg %/h", "Active time", "Last there"]
-START, PAUSE, RESET = "Start", "Pause", "Reset"
+START, PAUSE, RESUME, RESET = "Start", "Pause", "Resume", "Reset"
 SESSIONS = "Sessions"
 # The EXP card's choices, and the line under each
 SESSION_MODES = {AUTO: "Track automatically", MANUAL: "Track when I press Start"}
@@ -185,6 +185,7 @@ class ExpMeterTool:
         # segments saved), which the next Start carries on; else None
         self._meter: ExpMeter | None = None
         self._held: ExpMeter | None = None
+        self._paused_rate = None  # the live rate at Pause, kept on screen until Resume
         if self._session.state == State.TRACKING:
             self._meter = self._new_meter(())
         self._last_flush: float | None = None
@@ -305,6 +306,8 @@ class ExpMeterTool:
         held = {State.NOT_TRACKING: PRESS_START, State.PAUSED: PAUSED}.get(self._session.state)
         meter = self._meter or self._held
         rate = self._meter.rate(now) if self._meter else None
+        if self._session.state == State.PAUSED:
+            rate = self._paused_rate
         session = meter.session() if meter else None
         self._show(box_lines(rate, session, self._waiting, self._unread, held))
         accent = self._unread and not self._waiting and not held
@@ -319,6 +322,8 @@ class ExpMeterTool:
             self._held, self._meter = self._meter, None
         if not step.carry:
             self._held = None  # the session ended; its segments are saved
+        if self._session.state != State.PAUSED:
+            self._paused_rate = None
         if step.open:
             self._meter = self._new_meter(self._held.session_parts() if self._held else ())
             self._held = None
@@ -329,16 +334,21 @@ class ExpMeterTool:
         state = self._session.state
         self._session_row.setVisible(self._session.mode == MANUAL)
         self._start.setVisible(state != State.TRACKING)
+        self._start.setText(RESUME if state == State.PAUSED else START)
         self._pause.setVisible(state == State.TRACKING)
         self._reset.setEnabled(state != State.NOT_TRACKING)
 
     def start(self, now: float) -> None:
-        """Manual Start: a new session, or the paused one goes on, measured afresh."""
+        """Manual Start, or Resume after a Pause: a new session, or the paused one goes on,
+        its live rate measured afresh."""
         self._do(self._session.start(), now)
         self._refresh(now)
 
     def pause(self, now: float) -> None:
-        """Manual Pause: the visit is saved and nothing counts until Start."""
+        """Manual Pause: the visit is saved and nothing counts until Resume; the numbers
+        stay on screen as they were."""
+        if self._meter is not None and self._session.state == State.TRACKING:
+            self._paused_rate = self._meter.rate(now)
         self._do(self._session.pause(), now)
         self._refresh(now)
 

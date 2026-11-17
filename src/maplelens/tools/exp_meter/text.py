@@ -28,11 +28,11 @@ def box_lines(
     held: str | None = None,
 ) -> list[list[Column]]:
     """The EXP tab's content as rows of side-by-side columns; `unread`: the bar is unreadable;
-    `held`: PRESS_START or PAUSED in manual mode, when the live values are all "—" (the
-    session column keeps a paused session's numbers)."""
+    `held`: PRESS_START or PAUSED in manual mode. Before Start the live values are all "—";
+    while paused, `rate` is the one at the Pause, kept on screen with the session's."""
     if waiting:
         return [[("waiting for game", [])]]
-    if held:
+    if held == PRESS_START:
         rate = None
     if rate is None:
         exp, pct, eta = "— /h", "—% /h", "—"
@@ -65,6 +65,8 @@ def pin_text(
     """The pinned EXP line on the other tabs: (text, in the accent colour)."""
     if waiting:
         return "Waiting for game", False
+    if held == PAUSED and rate is not None and not rate.early:
+        return f"{PAUSED} · {rate.pct_per_min * 60:.2f}%/h", False
     if held:
         return held, False
     if unread:

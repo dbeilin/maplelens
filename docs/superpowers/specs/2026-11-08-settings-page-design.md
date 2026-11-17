@@ -259,8 +259,10 @@ in the EXP section:
   in every mode, and in the pinned line (Daniel). "Paused" then means only a manual Pause.
 - **Manual, not tracking:** the left label is "Press Start", the session label is "Session",
   every value is `—`. The pinned line says "Press Start".
-- **Manual, paused:** the left label is "Paused" and its values are `—`; the session column
-  keeps its numbers so far (Daniel). The pinned line says "Paused".
+- **Manual, paused:** the left label is "Paused", and every number stays as it was at the
+  Pause: the live rate, Level up in and the session column (Daniel, 2026-11-17: first built
+  with the live values cleared to `—`). The pinned line says "Paused · 2.31%/h". After
+  Resume the live rate measures afresh from a new baseline, as before.
 - **Manual, tracking:** as auto. "Can't read bar" and "waiting for game" keep their priority.
 - The rows stay the same in every state, so nothing jumps (the no-blink update in `_show`).
 
@@ -271,7 +273,7 @@ Pin row, one row of two, all `Qt.NoFocus`:
 |---|---|---|
 | Not tracking | **Start** (primary) | disabled |
 | Tracking | Pause (secondary) | enabled |
-| Paused | **Start** (primary) | enabled |
+| Paused | **Resume** (primary) | enabled |
 
 ```
 Last 5 min      Session · 1h 20m

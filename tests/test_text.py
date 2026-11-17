@@ -111,12 +111,17 @@ def test_box_lines_manual_not_tracking():
     ]
 
 
-def test_box_lines_manual_paused_keeps_the_session_column():
+def test_box_lines_manual_paused_keeps_every_number():
     rows = box_lines(Rate(12480, 0.42, 137), SessionRate(10000, 7800), False, held="Paused")
     assert rows == [
-        [("Paused", ["— /h", "—% /h"]), ("Session · 2h 10m", ["600,000 /h", ""])],
-        [("Level up in", ["—"])],
+        [("Paused", ["748,800 /h", "25.20% /h"]), ("Session · 2h 10m", ["600,000 /h", ""])],
+        [("Level up in", ["2h 17m"])],
     ]
+
+
+def test_box_lines_before_start_shows_no_live_numbers():
+    rows = box_lines(Rate(12480, 0.42, 137), None, False, held="Press Start")
+    assert rows[0][0] == ("Press Start", ["— /h", "—% /h"]) and rows[1] == [("Level up in", ["—"])]
 
 
 def test_box_lines_manual_same_rows_as_tracking():
@@ -135,5 +140,9 @@ def test_box_lines_manual_state_over_an_unread_bar_but_not_a_missing_game():
 
 def test_pin_text_manual_states():
     assert pin_text(None, False, held="Press Start") == ("Press Start", False)
-    assert pin_text(Rate(1, 0.1, 5), False, unread=True, held="Paused") == ("Paused", False)
+    assert pin_text(Rate(1, 0.1, 5), False, unread=True, held="Paused") == (
+        "Paused · 6.00%/h",
+        False,
+    )
+    assert pin_text(None, False, held="Paused") == ("Paused", False)  # no rate yet at Pause
     assert pin_text(None, True, held="Paused") == ("Waiting for game", False)

@@ -374,17 +374,20 @@ def test_manual_start_pause_start_leaves_the_paused_exp_out(monkeypatch, tmp_pat
     assert _buttons(tool) == [("Pause", True), ("Reset", True)]
     raw, pct = _hunt(tool, 1000.0, 145)  # 6 minutes: a visit worth saving
     tracked = _active(tool)
-    session_text = tool._texts[4].text()
+    session_text, live_text = tool._texts[4].text(), tool._texts[1].text()
     tool.pause(1400.0)
-    assert _buttons(tool) == [("Start", True), ("Reset", True)]
+    assert _buttons(tool) == [("Resume", True), ("Reset", True)]
     saved = history(tool._conn)[0].active_s  # the visit, saved at Pause
     assert saved == pytest.approx(tracked)
-    assert tool._texts[0].text() == "Paused" and tool.pin_line.text() == "Paused"
-    assert tool._texts[1].text() == "— /h" and tool._texts[4].text() == session_text
+    assert tool._texts[0].text() == "Paused" and tool.pin_line.text().startswith("Paused · ")
+    assert tool._texts[1].text() == live_text != "— /h"  # the numbers stay as they were
+    assert tool._texts[4].text() == session_text
     raw, pct = _hunt(tool, 1500.0, 145, raw, pct)  # hunted while paused
     assert history(tool._conn)[0].active_s == saved
     assert tool._texts[4].text() == session_text  # the session column kept, unchanged
-    tool.start(1900.0)
+    assert tool._texts[1].text() == live_text  # and the live one, frozen
+    tool.start(1900.0)  # Resume
+    assert _buttons(tool) == [("Pause", True), ("Reset", True)]
     t = 2000.0  # the first reading after Start: a new baseline, crediting nothing
     tool.update(Reading(t, ExpValue(raw + 50_000, pct + 5), 50, "Mage", "Ant Tunnel"), None, t)
     tool.update(Reading(t + 1, ExpValue(raw + 50_000, pct + 5), 50, "Mage", "Ant Tunnel"), None, t)
