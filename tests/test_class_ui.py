@@ -205,17 +205,41 @@ def test_no_build_picker_or_marks_box_in_the_tab(make):
     assert not tool.tab.findChildren(QComboBox) and not tool.tab.findChildren(QCheckBox)
 
 
-def test_pick_build_saves_and_tells(make):
-    saved, told = [], []
+def test_pick_build_in_the_tab_saves_and_moves_the_settings_switch(make):
+    saved = []
     tool = make(on_changed=lambda: saved.append(1))
-    tool.builds_changed = lambda: told.append(1)
+    section = tool.settings_section()  # noqa: F841 - held: its switches live as long as it
     tool.update(R(level=12), RECT, 0)
-    assert tool.build_names() == ["LUK", "Sindit"] and tool.build_name() == "LUK"
     tool.pick_build("Sindit")
-    assert tool._settings["class_builds"] == {"Rogue": "Sindit"} and saved and told
-    assert tool.build_name() == "Sindit"
-    tool.update(R(job="Hermit", level=72), RECT, 1)
-    assert tool.build_names() == []
+    assert tool._settings["class_builds"] == {"Rogue": "Sindit"} and saved
+    assert tool._switches["Rogue"].chosen == "Sindit"
+
+
+def test_the_class_card_lists_each_job_with_a_build_to_choose(make):
+    from PySide6.QtWidgets import QLabel
+
+    from maplelens.tools.class_helper.ui import BUILDS
+
+    tool = make()
+    section = tool.settings_section()
+    assert [p.job for p in tool.build_jobs()] == ["Rogue"]  # not the Beginner: the tab asks
+    assert BUILDS in [w.text() for w in section.findChildren(QLabel)]
+    switch = tool._switches["Rogue"]
+    assert list(switch.buttons) == ["LUK", "Sindit"] and switch.chosen == "LUK"
+
+
+def test_a_build_chosen_in_settings_applies_even_before_the_job(make):
+    saved = []
+    tool = make(on_changed=lambda: saved.append(1))
+    section = tool.settings_section()  # noqa: F841 - held
+    tool.update(R(job="Beginner", level=5), RECT, 0)  # not a Rogue yet
+    tool._switches["Rogue"].buttons["Sindit"].click()
+    assert tool._settings["class_builds"]["Rogue"] == "Sindit" and saved
+    assert tool._switches["Rogue"].chosen == "Sindit"
+    tool.update(R(level=12), RECT, 1)  # now a Rogue: Sindit's plan from the start
+    before = texts(tool)
+    tool._switches["Rogue"].buttons["LUK"].click()  # live, with the tab open on it
+    assert texts(tool) != before
 
 
 def click(row):

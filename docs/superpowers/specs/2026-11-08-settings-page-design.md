@@ -74,7 +74,7 @@ One design, five parts that ship and test separately:
 |---|---|---|---|
 | `settings-window` | The window, the menu move, turning things off | none | Refreshed, ready |
 | `arrow-options` | Arrow show, size and colour | `settings-window` | Refreshed, ready |
-| `build-choice` | Build per job | `settings-window` | Needs a decision (#72) |
+| `build-choice` | Build per job | `settings-window` | Decided 2026-11-17, built |
 | `exp-sessions` | Manual mode: Start, Pause, Reset | `settings-window` | Re-decided on #79, ready |
 | `best-sessions` | Sessions stored and ranked in History | `exp-sessions` | Re-decided on #79, ready |
 
@@ -103,7 +103,7 @@ Build in that order. Each part is its own PR, and none changes `version` in `pyp
 - **Every change applies and saves at once.** There's no OK or Apply, matching today's
   toggles.
 - **The menu shrinks to** Update to X.Y.Z… (when there is one), Pick game window…, Open
-  Screen Recording settings… (Mac), Build: {name} (until `build-choice` settles it),
+  Screen Recording settings… (Mac),
   Settings…, Hide, About, Quit.
 - **Pin stays on the EXP tab only.** It's a button the player already uses there, and a
   second copy in Settings would be the same setting in two places *(my call)*.
@@ -183,23 +183,24 @@ Path section:
 
 ### `build-choice`
 
-> **Needs a decision before it's built (2026-11-14).** #72 added a build picker in the Class
-> tab itself (a build row that opens the list of builds, and a question for a Beginner), and
-> left the `Build: {name}` submenu in the menu too. So the build can already be changed in
-> two places. What's left from this section: remove the submenu, and decide whether Settings
-> still lists every job for choosing ahead, or whether the Class tab's picker is enough.
+> **Decided 2026-11-17 (Daniel):** a list in the Class card with a two-way switch per job,
+> not tabs or dropdowns. #72's picker in the Class tab stays; the two show the same choice.
 
-Class section:
+Class section (built 2026-11-17):
 
-- One row per job that has more than one build: the job's name and a dropdown of its builds.
-  A job with one build isn't listed.
-- It shows every job, including ones the character hasn't reached (Daniel), so a player can
-  choose ahead.
-- It reads and writes `class_builds` as today, and the Class tab follows at once.
-- The AP/SP marks toggle moves here (`class_marks`).
-- The `Build: {name}` submenu and `add_build_menu` go away *(my call: the crowded menu is the
-  reason for this work)*. This undoes the overlay redesign's move of the build into the
-  menu, on purpose.
+- Under the AP/SP marks, a grey heading "Build for each job", then one row per job that has
+  more than one build: the job's name, then its builds side by side ("Magic Claw | Energy
+  Bolt"), the chosen one yellow and bold, as the Quests tab's Closest | Best. A click picks.
+- Seven rows from today's `classes.json` (Magician, Bowman, Rogue, Fighter, Page, Spearman,
+  Bandit), each with two builds: a short list doesn't need tabs. **Not dropdowns:** a
+  dropdown opens a popup, untested in the Mac's non-activating panel *(my call)*.
+- **Every job is listed, reached or not** (Daniel), so a player can choose ahead. The
+  Beginner's choice of class isn't listed: the Class tab asks it when it's time (#72).
+- It reads and writes `class_builds` as today; the Class tab follows at once, and a pick in
+  the tab's own picker moves the switch in Settings too. One setting, two views of it.
+- The `Build: {name}` submenu and `add_build_menu` are gone, with the tool's `build_names`,
+  `build_name`, `builds_changed` and `_tell_builds` *(my call: the crowded menu is the
+  reason for this work)*.
 
 ### `exp-sessions`
 
@@ -463,7 +464,7 @@ def _arrow_size(value: object) -> object:
 
 1. Settings… in the box's menu and the tray's opens one window, and every change in it
    applies at once and survives a restart.
-2. The menu has at most eight items (seven once `build-choice` removes Build), with the moved
+2. The menu has at most seven items, with the moved
    items gone from it.
 3. Each tool can be turned off and on live. The last one can't be turned off, and nothing
    errors in `maplelens.log` when any are off.

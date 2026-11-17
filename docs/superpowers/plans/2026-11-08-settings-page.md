@@ -6,8 +6,8 @@ local `main` was fast-forwarded to it. The fork's `main` (`fork` remote) is behi
 branch from it. One commit per task, one PR per phase, from the fork (`dbeilin/maplelens`)
 to `or-keren/maplelens`. No PR changes `version`.
 
-**Refresh, 2026-11-14:** Phases 1 and 2 are rechecked against v0.6.3. Phase 3 waits for the
-`build-choice` decision. Phases 4 and 5 are rewritten on top of #79's session average: `auto`
+**Refresh, 2026-11-14:** Phases 1 and 2 are rechecked against v0.6.3. Phase 3's design was
+decided on 2026-11-17 (a switch per job in the Class card). Phases 4 and 5 are rewritten on top of #79's session average: `auto`
 (#79) stays the default, and manual Start/Pause/Reset is an opt-in.
 
 The spec and this plan go in as the first commit of Phase 1.
@@ -237,17 +237,19 @@ in `clean`. `_Arrow` paints in its `color`; the preview follows.
 
 ### Task T9: a build per job in Settings
 
-**Description:** The Class section lists every entry of `ClassData.jobs` with more than one
-build, with a dropdown, reading and writing `class_builds` under `plan.job`. Remove
-`add_build_menu`, `builds_changed` and `_tell_builds`, along with their tests
-(`test_app.py` from line 1409, `test_class_ui.py:180`).
+**Description:** The Class card lists every job past tier 0 with more than one build
+(`build_jobs`), each with a two-way switch (`_BuildSwitch`), reading and writing
+`class_builds` through `choose_build`; the tab's `pick_build` goes through it too. Removed:
+`add_build_menu`, `builds_changed`, `_tell_builds`, `build_names`, `build_name`, and their
+tests.
 
 **Acceptance criteria:**
-- [ ] A job with one build isn't listed; jobs not yet reached are.
-- [ ] Choosing a build updates the Class tab at once, and is saved.
-- [ ] The Build submenu is gone.
+- [x] A job with one build isn't listed, nor the Beginner's class; jobs not yet reached are.
+- [x] Choosing a build updates the Class tab at once, and is saved; the tab's picker moves
+      the switch.
+- [x] The Build submenu is gone.
 
-**Verification:** `uv run pytest tests/test_class_ui.py tests/test_app.py`
+**Verification:** `uv run pytest tests/test_class_ui.py tests/test_app.py`; the card drawn.
 
 **Dependencies:** T3. **Files:** `class_helper/ui.py`, `app.py`, `tests/test_class_ui.py`,
 `tests/test_app.py`. **Scope:** M
@@ -391,7 +393,6 @@ settings are. Run the spec's whole by-hand list.
 
 - From the spec, for the owner in PR 4/5: manual mode at all, "Idle" for a break, and saving
   sessions.
-- `build-choice` (Phase 3): drop the Build submenu only, or also list every job in Settings?
 
 ## Status
 
@@ -400,4 +401,4 @@ window was drawn offscreen; Checkpoint A's by-hand checks on Windows and the Mac
 do. Phase 2 (T7–T8) built on `feat/arrow-options`, stacked on it,
 2026-11-14: show, size and colour; the 2 s hold through missed frames is built in, with no setting. Phases 1 and 2 were
 refreshed against v0.6.3 on 2026-11-14, and Phases 4 and 5 rewritten on top of #79 the same
-day. Phase 3 waits for the `build-choice` decision.
+day. Phase 3 (T9) built on `feat/build-choice`, from `feat/settings-page`, 2026-11-17.

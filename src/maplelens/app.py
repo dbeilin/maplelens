@@ -826,22 +826,6 @@ def about_line(updates: "UpdateCheck | None") -> tuple[str, bool]:
     return text, release is not None and text == update_available(release.version)
 
 
-def add_build_menu(box: Box, tool) -> QAction:
-    """The class tool's build choice, above Quit: "Build: <name>", shown when there's a choice.
-
-    `tool` has build_names(), build_name(), pick_build(name) and a builds_changed hook.
-    """
-    action = box.add_submenu("Build", tool.build_names, tool.pick_build, at=-1)
-    action.setVisible(False)
-
-    def follow() -> None:
-        action.setText(f"Build: {tool.build_name()}")
-        action.setVisible(bool(tool.build_names()))
-
-    tool.builds_changed = follow
-    return action
-
-
 def add_about(box: Box, updates: "UpdateCheck | None") -> None:
     """The About item, just before Quit: the version, updates and the GitHub page.
 
@@ -1043,7 +1027,6 @@ def main() -> int:
     box.add_footer(tool.pin_line, 0)  # the EXP line, under every tab but EXP's own
     box.set_footer_shown(tool.pinned)
     setup_screen_recording(box)
-    add_build_menu(box, cls_tool)
     updates = update_check(box, settings, save, seen, time.time())
     general = GeneralSection()
     if updates is not None:

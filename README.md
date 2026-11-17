@@ -126,7 +126,8 @@ from source never does.
 **Settings:** click **•••** on the box and choose **Settings…**. Every change applies at
 once. You can turn off a tool you don't use (its tab goes away; at least one stays on),
 change the path arrow's size and colour, or hide it (under Path), and turn off the AP/SP
-marks on the game's stat and skill windows (under Class).
+marks on the game's stat and skill windows or pick a build for each job, even one you
+haven't reached yet (under Class).
 
 **Uninstalling:** Settings → Apps → MapleLens. Your settings and history stay in
 `%APPDATA%\MapleLens`; delete that folder to remove them too. If something goes wrong,
