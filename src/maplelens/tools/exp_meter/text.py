@@ -15,25 +15,39 @@ def format_duration(minutes: float) -> str:
 
 Column = tuple[str, list[str]]  # (grey label, value lines)
 
+# The left label in manual mode while nothing is measured, by the session's state
+PRESS_START, PAUSED = "Press Start", "Paused"
+IDLE = "Idle"  # the live rate stopped for a break: no EXP for a while
+
 
 def box_lines(
-    rate: Rate | None, session: SessionRate | None, waiting: bool, unread: bool = False
+    rate: Rate | None,
+    session: SessionRate | None,
+    waiting: bool,
+    unread: bool = False,
+    held: str | None = None,
 ) -> list[list[Column]]:
-    """The EXP tab's content as rows of side-by-side columns; `unread`: the bar is unreadable."""
+    """The EXP tab's content as rows of side-by-side columns; `unread`: the bar is unreadable;
+    `held`: PRESS_START or PAUSED in manual mode, when the live values are all "—" (the
+    session column keeps a paused session's numbers)."""
     if waiting:
         return [[("waiting for game", [])]]
+    if held:
+        rate = None
     if rate is None:
         exp, pct, eta = "— /h", "—% /h", "—"
     else:
         exp = f"{rate.exp_per_min * 60:,.0f} /h"
         pct = f"{rate.pct_per_min * 60:.2f}% /h"
         eta = "—" if rate.minutes_to_level is None else format_duration(rate.minutes_to_level)
-    if unread:
+    if held:
+        label = held
+    elif unread:
         label = "Can't read bar"
     elif rate is None or rate.early:
         label = "Measuring"
     else:
-        label = "Paused" if rate.paused else "Last 5 min"
+        label = IDLE if rate.paused else "Last 5 min"
     s_label, s_exp = "Session", "— /h"
     if session:
         hours = session.active_s / 3600
@@ -45,16 +59,20 @@ def box_lines(
     return [[(label, [exp, pct]), (s_label, [s_exp, ""])], [("Level up in", [eta])]]
 
 
-def pin_text(rate: Rate | None, waiting: bool, unread: bool = False) -> tuple[str, bool]:
+def pin_text(
+    rate: Rate | None, waiting: bool, unread: bool = False, held: str | None = None
+) -> tuple[str, bool]:
     """The pinned EXP line on the other tabs: (text, in the accent colour)."""
     if waiting:
         return "Waiting for game", False
+    if held:
+        return held, False
     if unread:
         return "Can't read bar", True
     if rate is None or rate.early:
         return "Measuring…", False
     if rate.paused:
-        return "Paused", False
+        return IDLE, False
     eta = "—" if rate.minutes_to_level is None else format_duration(rate.minutes_to_level)
     return f"{rate.pct_per_min * 60:.2f}%/h · Lvl in {eta}", False
 

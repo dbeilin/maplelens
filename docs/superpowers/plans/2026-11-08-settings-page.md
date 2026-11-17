@@ -263,7 +263,7 @@ start, pause, reset, gain, tick, set mode. In `auto` it starts tracking and neve
 30-minute split stays in the meter. Add `session.py` to `AGENTS.md`.
 
 **Acceptance criteria:**
-- [ ] Every row of the spec's rules table, in both modes, plus the mode switches (`manual` →
+- [x] Every row of the spec's rules table, in both modes, plus the mode switches (`manual` →
       `auto` while paused goes on tracking).
 
 **Verification:** `uv run pytest tests/test_session.py`
@@ -279,10 +279,10 @@ session gain list is kept with its segment (map, job, level), for T13. No change
 `_totals` or to how a gain is counted.
 
 **Acceptance criteria:**
-- [ ] A session paused (meter closed) and carried into a fresh meter gives the same
+- [x] A session paused (meter closed) and carried into a fresh meter gives the same
       `session()` as one fed straight through, minus the gains fed while paused.
-- [ ] With `split=False`, a gap over 30 minutes keeps the session.
-- [ ] Every existing `test_meter.py` test passes unchanged.
+- [x] With `split=False`, a gap over 30 minutes keeps the session.
+- [x] Every existing `test_meter.py` test passes unchanged.
 
 **Verification:** `uv run pytest tests/test_meter.py`
 
@@ -299,12 +299,12 @@ and Pin. `box_lines` and `pin_text` gain "Press Start" and "Paused"; the idle la
 `auto`; any that check the "Paused" text change to "Idle".
 
 **Acceptance criteria:**
-- [ ] In `auto`, the tab looks and works as before, but for "Idle"; same height.
-- [ ] In `manual`, nothing is recorded before Start; EXP gained during a pause isn't counted;
+- [x] In `auto`, the tab looks and works as before, but for "Idle"; same height.
+- [x] In `manual`, nothing is recorded before Start; EXP gained during a pause isn't counted;
       the first reading after Start is a new baseline; the session column keeps its numbers
       while paused.
-- [ ] Reset saves and goes to not tracking. Every button is `Qt.NoFocus`.
-- [ ] Switching mode behaves as the spec says.
+- [x] Reset saves and goes to not tracking. Every button is `Qt.NoFocus`.
+- [x] Switching mode behaves as the spec says.
 
 **Verification:** `uv run pytest tests/test_ui.py tests/test_text.py tests/test_session.py`;
 draw the tab in `auto` and in the three `manual` states with `QWidget.grab()` and look at them.
@@ -314,7 +314,7 @@ draw the tab in `auto` and in the three `manual` states with `QWidget.grab()` an
 
 ### Checkpoint D (before PR 4)
 
-- [ ] The four checks pass.
+- [x] The four checks pass.
 - [ ] By hand on Windows, in the game: in `auto`, nothing changed but "Idle". In `manual`:
       Start, hunt, Pause, hunt, Start: the paused EXP isn't in History or the session.
       Pressing the buttons leaves the game the keyboard.
@@ -401,3 +401,13 @@ do. Phase 2 (T7–T8) built on `feat/arrow-options`, stacked on it,
 2026-11-14: show, size and colour; the 2 s hold through missed frames is built in, with no setting. Phases 1 and 2 were
 refreshed against v0.6.3 on 2026-11-14, and Phases 4 and 5 rewritten on top of #79 the same
 day. Phase 3 waits for the `build-choice` decision.
+
+Phase 4 (T10–T12) built on `claude/angry-davinci-8f6012`, on top of `feat/settings-page`
+(or-keren/maplelens#94), 2026-11-17: `session.py`, the meter's `carry` and `split`, and
+`exp_session_mode` with the EXP card's two choices and manual mode's Start/Pause and Reset row.
+The four checks pass. The EXP tab was drawn offscreen in `auto` (the same height as before T12,
+with "Idle" for a break) and in the three `manual` states (one row taller), and so was the EXP
+card. Two choices made while building: Pause saves the open visit as quitting does; and when
+the split turns on again (`manual` → `auto`), its 30 minutes count from the switch, so a
+session left paused for an hour isn't split by the first kill after it. Checkpoint D's by-hand
+checks in the game, and the PR, are still to do.

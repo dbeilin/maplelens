@@ -19,7 +19,7 @@ def test_pin_text_values():
 def test_pin_text_states():
     assert pin_text(None, False) == ("Measuring…", False)
     assert pin_text(Rate(1, 0.1, 5, early=True), False) == ("Measuring…", False)
-    assert pin_text(Rate(1, 0.1, 5, paused=True), False) == ("Paused", False)
+    assert pin_text(Rate(1, 0.1, 5, paused=True), False) == ("Idle", False)
     assert pin_text(Rate(1, 0.1, 5, paused=True), False, unread=True) == ("Can't read bar", True)
     assert pin_text(None, True) == ("Waiting for game", False)
 
@@ -51,7 +51,7 @@ def test_box_lines_session_under_a_minute():
 
 def test_box_lines_left_label_states():
     assert box_lines(Rate(100, 0.1, 5), None, False)[0][0][0] == "Last 5 min"
-    assert box_lines(Rate(100, 0.1, 5, paused=True), None, False)[0][0][0] == "Paused"
+    assert box_lines(Rate(100, 0.1, 5, paused=True), None, False)[0][0][0] == "Idle"
     assert box_lines(Rate(100, 0.1, 5), None, False, unread=True)[0][0][0] == "Can't read bar"
 
 
@@ -102,3 +102,38 @@ def test_box_lines_long_session_drops_minutes():
     # "Session · 12h 10m" fills the column to the pixel at 214 px: from 10 h, hours only
     assert box_lines(None, SessionRate(100, 9.99 * 3600), False)[0][1][0] == "Session · 9h 59m"
     assert box_lines(None, SessionRate(100, 12.2 * 3600), False)[0][1][0] == "Session · 12h"
+
+
+def test_box_lines_manual_not_tracking():
+    assert box_lines(None, None, False, held="Press Start") == [
+        [("Press Start", ["— /h", "—% /h"]), ("Session", ["— /h", ""])],
+        [("Level up in", ["—"])],
+    ]
+
+
+def test_box_lines_manual_paused_keeps_the_session_column():
+    rows = box_lines(Rate(12480, 0.42, 137), SessionRate(10000, 7800), False, held="Paused")
+    assert rows == [
+        [("Paused", ["— /h", "—% /h"]), ("Session · 2h 10m", ["600,000 /h", ""])],
+        [("Level up in", ["—"])],
+    ]
+
+
+def test_box_lines_manual_same_rows_as_tracking():
+    def shape(rows):
+        return [[len(values) for _, values in row] for row in rows]
+
+    tracking = box_lines(Rate(1, 0.1, 5), None, False)
+    assert shape(box_lines(None, None, False, held="Press Start")) == shape(tracking)
+    assert shape(box_lines(None, None, False, held="Paused")) == shape(tracking)
+
+
+def test_box_lines_manual_state_over_an_unread_bar_but_not_a_missing_game():
+    assert box_lines(None, None, False, unread=True, held="Paused")[0][0][0] == "Paused"
+    assert box_lines(None, None, True, held="Paused") == [[("waiting for game", [])]]
+
+
+def test_pin_text_manual_states():
+    assert pin_text(None, False, held="Press Start") == ("Press Start", False)
+    assert pin_text(Rate(1, 0.1, 5), False, unread=True, held="Paused") == ("Paused", False)
+    assert pin_text(None, True, held="Paused") == ("Waiting for game", False)
