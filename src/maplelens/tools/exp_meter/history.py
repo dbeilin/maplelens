@@ -33,7 +33,9 @@ def open_db(path: Path) -> sqlite3.Connection:
 
 def save_segment(conn: sqlite3.Connection, seg: Segment) -> None:
     conn.execute(
-        "INSERT OR REPLACE INTO exp_segments VALUES (?,?,?,?,?,?,?,?)",
+        # named columns: a table a newer build made, with more of them, still takes the row
+        "INSERT OR REPLACE INTO exp_segments(start, end, map, job, level, exp, pct, active_s)"
+        " VALUES (?,?,?,?,?,?,?,?)",
         (seg.start, seg.end, seg.map_name, seg.job, seg.level, seg.exp, seg.pct, seg.active_s),
     )
     conn.commit()

@@ -91,3 +91,13 @@ def test_best_maps_skips_maps_with_under_a_minute_of_training(tmp_path):
     save_segment(conn, _seg(0, exp=500, active_s=10.0, map_name="One lucky kill"))
     save_segment(conn, _seg(1000, exp=600, map_name="Real"))
     assert [r[0] for r in best_maps(conn, {"Hero"}, 44)] == ["Real"]
+
+
+def test_save_into_table_with_extra_column(tmp_path):
+    # a database a newer (or dev) build made, with a column this one doesn't know
+    path = tmp_path / "t.db"
+    conn = open_db(path)
+    conn.execute("ALTER TABLE exp_segments ADD COLUMN party INTEGER NOT NULL DEFAULT 0")
+    save_segment(conn, _seg(0, exp=600))
+    (row,) = history(conn)
+    assert row.exp_per_min == approx(600)
