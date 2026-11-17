@@ -78,10 +78,16 @@ class Session:
         return NOTHING
 
     def set_mode(self, mode: str) -> Step:
-        """A running session carries on. To auto: tracking starts if it wasn't, and a paused
-        session goes on (auto has no button to unpause it)."""
+        """To manual: the running session ends and is saved, and nothing counts until Start
+        (Daniel: choosing manual means "wait for my Start"). To auto: tracking starts if it
+        wasn't, and a paused session goes on (auto has no button to unpause it)."""
+        if mode == self.mode:
+            return NOTHING
         self.mode = mode
-        if mode == MANUAL or self.state == State.TRACKING:
+        if mode == MANUAL:
+            was, self.state = self.state, State.NOT_TRACKING
+            return Step(close=was == State.TRACKING)
+        if self.state == State.TRACKING:
             return NOTHING
         paused = self.state == State.PAUSED
         self.state = State.TRACKING

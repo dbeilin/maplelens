@@ -245,10 +245,11 @@ in the EXP section:
   was pressed, and the live rate starts measuring again. The session's totals go on from
   where they were. *(My call. It keeps #79's session arithmetic untouched; `meter.py` gains
   only the carry-over and a switch for the 30-minute split, which manual turns off.)*
-- **Switching mode:** a running session carries on. `auto` → `manual` while tracking: it runs
-  until Reset, with no 30-minute split from then. `manual` → `auto`: tracking starts if it
-  wasn't, a paused session goes on (auto has no buttons to unpause it), and the split applies
-  from then.
+- **Switching mode:** `auto` → `manual`: the running session ends and is saved, as Reset
+  does, and nothing counts until Start (Daniel, 2026-11-17, after trying it: choosing manual
+  means "wait for my Start"; first built so the session carried on, which kept counting).
+  `manual` → `auto`: tracking starts if it wasn't, a paused session goes on (auto has no
+  buttons to unpause it), and the split applies from then.
 - **The state machine is pure:** a small class in `exp_meter/session.py`, with no Qt, that
   takes start, pause, reset, gain, tick and mode events.
 

@@ -438,15 +438,17 @@ def test_the_session_buttons_work_by_click(monkeypatch, tmp_path):
     assert tool._held is None and _buttons(tool)[0][0] == "Start"
 
 
-def test_switching_to_manual_carries_the_session_on(monkeypatch, tmp_path):
+def test_switching_to_manual_saves_the_session_and_waits_for_start(monkeypatch, tmp_path):
     settings, saves = dict(DEFAULTS, boxes={}), []
     tool = _tool(monkeypatch, tmp_path, settings, save=lambda: saves.append(1))
-    _hunt(tool, 1000.0, 20)
-    meter = tool._meter
+    _hunt(tool, 1000.0, 145)  # 6 minutes: a visit History keeps
     tool.set_session_mode("manual")
     assert settings["exp_session_mode"] == "manual" and saves == [1]
-    assert tool._meter is meter and not meter._split  # the same session, no split from now
-    assert _buttons(tool) == [("Pause", True), ("Reset", True)]
+    assert tool._meter is None and tool._held is None  # ended, not carried on
+    assert len(history(tool._conn)) == 1  # saved, as on Reset
+    assert _buttons(tool) == [("Start", True), ("Reset", False)]
+    _hunt(tool, 2000.0, 145)  # hunting before Start records nothing
+    assert len(history(tool._conn)) == 1 and tool._meter is None
 
 
 def test_switching_to_auto_while_paused_goes_on_tracking(monkeypatch, tmp_path):
@@ -485,7 +487,7 @@ def test_the_exp_card_switches_the_session_mode(monkeypatch, tmp_path):
     assert auto.isChecked() and not manual.isChecked()
     manual.click()
     assert settings["exp_session_mode"] == "manual" and not auto.isChecked()
-    assert _buttons(tool) == [("Pause", True), ("Reset", True)]
+    assert _buttons(tool) == [("Start", True), ("Reset", False)]
     manual.click()  # the chosen one stays chosen
     assert manual.isChecked() and settings["exp_session_mode"] == "manual"
     auto.click()

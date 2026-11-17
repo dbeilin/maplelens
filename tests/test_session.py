@@ -139,11 +139,12 @@ def test_a_gain_counts_only_while_tracking(mode, state, counts):
 # Switching mode
 
 
-def test_auto_to_manual_while_tracking_carries_on_without_the_split():
+def test_auto_to_manual_ends_the_session_and_waits_for_start():
     s = Session()
-    assert s.set_mode(MANUAL) == NOTHING
-    assert (s.state, s.split) == (ON, False)
-    assert s.pause() == Step(close=True, carry=True)  # the buttons work from then
+    assert s.set_mode(MANUAL) == Step(close=True)  # saved, and not carried on
+    assert (s.state, s.split) == (State.NOT_TRACKING, False)
+    assert not s.gain()  # nothing counts until Start
+    assert s.start() == Step(open=True)  # a new session
 
 
 @pytest.mark.parametrize("state", [ON, PAUSED])
