@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import pytest
+
 from maplelens.tools.exp_meter.meter import Rate, SessionRate
 from maplelens.tools.exp_meter.text import (
     best_lines,
@@ -146,3 +148,17 @@ def test_pin_text_manual_states():
     )
     assert pin_text(None, False, held="Paused") == ("Paused", False)  # no rate yet at Pause
     assert pin_text(None, True, held="Paused") == ("Waiting for game", False)
+
+
+@pytest.mark.parametrize("seconds, shown", [(0, "0:00"), (65.9, "1:05"), (3725, "1:02:05")])
+def test_format_clock(seconds, shown):
+    from maplelens.tools.exp_meter.text import format_clock
+
+    assert format_clock(seconds) == shown
+
+
+def test_box_lines_shows_manual_modes_timer_before_any_gain():
+    rows = box_lines(None, None, False, held=None, timer=12)
+    assert rows[0][1] == ("Session · 0:12", ["— /h", ""])
+    rows = box_lines(None, SessionRate(10000, 7800), False, held="Paused", timer=4000)
+    assert rows[0][1] == ("Session · 1:06:40", ["600,000 /h", ""])  # the timer, not active time

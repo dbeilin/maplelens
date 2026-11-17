@@ -495,3 +495,26 @@ def test_the_exp_card_switches_the_session_mode(monkeypatch, tmp_path):
     assert manual.isChecked() and settings["exp_session_mode"] == "manual"
     auto.click()
     assert settings["exp_session_mode"] == "auto" and _buttons(tool) is None
+
+
+def test_manual_timer_runs_holds_and_clears(monkeypatch, tmp_path):
+    tool, _ = _manual(monkeypatch, tmp_path)
+    tool.update(None, None, 990.0)
+    assert tool._timer(990.0) is None
+    tool.start(1000.0)
+    tool.update(Reading(1065.0, None, 50, "Mage", "Ant Tunnel"), None, 1065.0)
+    assert tool._texts[3].text() == "Session · 1:05"  # from Start, before any EXP
+    tool.pause(1100.0)
+    tool.update(Reading(1500.0, None, 50, "Mage", "Ant Tunnel"), None, 1500.0)
+    assert tool._texts[3].text() == "Session · 1:40"  # held while paused
+    tool.start(1600.0)  # Resume
+    tool.update(Reading(1620.0, None, 50, "Mage", "Ant Tunnel"), None, 1620.0)
+    assert tool._texts[3].text() == "Session · 2:00"
+    tool.reset(1700.0)
+    assert tool._texts[3].text() == "Session"  # back to Press Start
+
+
+def test_auto_keeps_active_time_in_the_session_label(monkeypatch, tmp_path):
+    tool = _tool(monkeypatch, tmp_path, dict(DEFAULTS, boxes={}))
+    _hunt(tool, 1000.0, 145)
+    assert ":" not in tool._texts[3].text()  # "Session · 5m", not a stopwatch

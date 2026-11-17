@@ -259,6 +259,11 @@ in the EXP section:
   in every mode, and in the pinned line (Daniel). "Paused" then means only a manual Pause.
 - **Manual, not tracking:** the left label is "Press Start", the session label is "Session",
   every value is `—`. The pinned line says "Press Start".
+- **Manual mode's timer** (Daniel, 2026-11-17): the session label shows a stopwatch,
+  "Session · 4:05" (then "1:04:05"), from Start, in place of auto's active time. It counts
+  time tracked, whether or not anything is killed; it holds while paused, goes on after
+  Resume and clears on Reset. The session's EXP/h still uses active time. Auto keeps #79's
+  label.
 - **Manual, paused:** the left label is "Paused", and every number stays as it was at the
   Pause: the live rate, Level up in and the session column (Daniel, 2026-11-17: first built
   with the live values cleared to `—`). The pinned line says "Paused · 2.31%/h". After

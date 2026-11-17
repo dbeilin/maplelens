@@ -186,6 +186,8 @@ class ExpMeterTool:
         self._meter: ExpMeter | None = None
         self._held: ExpMeter | None = None
         self._paused_rate = None  # the live rate at Pause, kept on screen until Resume
+        self._tracked_s = 0.0  # manual mode's timer: time tracked before the current stretch
+        self._since: float | None = None  # when the current stretch of tracking began
         if self._session.state == State.TRACKING:
             self._meter = self._new_meter(())
         self._last_flush: float | None = None
@@ -309,7 +311,8 @@ class ExpMeterTool:
         if self._session.state == State.PAUSED:
             rate = self._paused_rate
         session = meter.session() if meter else None
-        self._show(box_lines(rate, session, self._waiting, self._unread, held))
+        timer = self._timer(now) if self._session.mode == MANUAL else None
+        self._show(box_lines(rate, session, self._waiting, self._unread, held, timer=timer))
         accent = self._unread and not self._waiting and not held
         self._texts[0].setStyleSheet(f"color: {ACCENT if accent else LABEL_COLOR};")
         self.pin_line.set_text(*pin_text(rate, self._waiting, self._unread, held))
@@ -328,7 +331,26 @@ class ExpMeterTool:
             self._meter = self._new_meter(self._held.session_parts() if self._held else ())
             self._held = None
             self._last_flush = None
+        self._run_clock(now)
         self._show_buttons()
+
+    def _run_clock(self, now: float) -> None:
+        """Manual mode's timer follows the session: it runs while tracking, holds while
+        paused, and goes back to 0:00 once the session ends."""
+        state = self._session.state
+        if self._since is not None and state != State.TRACKING:
+            self._tracked_s += now - self._since
+            self._since = None
+        if state == State.NOT_TRACKING:
+            self._tracked_s = 0.0
+        if state == State.TRACKING and self._since is None:
+            self._since = now
+
+    def _timer(self, now: float) -> float | None:
+        """Seconds tracked in this session, pauses left out; None before Start."""
+        if self._session.state == State.NOT_TRACKING:
+            return None
+        return self._tracked_s + (now - self._since if self._since is not None else 0.0)
 
     def _show_buttons(self) -> None:
         state = self._session.state
