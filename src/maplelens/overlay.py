@@ -520,6 +520,7 @@ class Box(QWidget):
         self._count = _Touches(self)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WA_AlwaysShowToolTips)  # Qt's are for the active window; it never is
         self._tab_buttons: list[QPushButton] = []
         self._tab_dots: list[QLabel] = []
         self._tab_shown: list[bool] = []  # a tab turned off keeps its index, only hidden

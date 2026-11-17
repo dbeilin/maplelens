@@ -1215,11 +1215,14 @@ def test_on_the_mac_a_tray_click_opens_the_menu_and_doesnt_toggle(qt_box, fake_t
 
 def test_on_the_mac_maplelens_leaves_the_dock(monkeypatch):
     calls = []  # never the real activation policy
-    fake = types.SimpleNamespace(make_accessory=lambda: calls.append("accessory"))
+    fake = types.SimpleNamespace(
+        make_accessory=lambda: calls.append("accessory"),
+        forward_hover=lambda: calls.append("hover"),
+    )
     monkeypatch.setitem(sys.modules, "maplelens.overlay_mac", fake)
     monkeypatch.setattr(maplelens, "overlay_mac", fake, raising=False)
     app.hide_from_dock()
-    assert calls == ["accessory"]
+    assert calls == ["accessory", "hover"]
 
 
 class _Recorder:

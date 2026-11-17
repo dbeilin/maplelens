@@ -212,6 +212,39 @@ def test_allow_typing_off_releases_keyboard_on_mac(monkeypatch):
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="overlay_mac needs AppKit")
+def test_forwarded_hover_reaches_rows_and_lists(monkeypatch):
+    """With the game in front Qt drops the pointer's moves; the forwarded ones still give a
+    row its enter and leave and a list its itemEntered."""
+    from PySide6.QtCore import QEvent
+    from PySide6.QtWidgets import QListWidget, QVBoxLayout, QWidget
+
+    from maplelens import overlay_mac
+
+    _box(monkeypatch)  # the offscreen QApplication
+    seen = []
+    top = QWidget()
+    col = QVBoxLayout(top)
+    row = overlay.Row("Henesys", "", None, on_hover=lambda on: seen.append(("row", on)))
+    lst = QListWidget()
+    lst.setMouseTracking(True)
+    lst.addItem("Ellinia")
+    lst.itemEntered.connect(lambda item: seen.append(("item", item.text())))
+    col.addWidget(row)
+    col.addWidget(lst)
+    top.resize(200, 200)
+    top.show()
+    window = top.windowHandle()
+    on_row = row.mapToGlobal(row.rect().center())
+    overlay_mac.hover(window, QEvent.Enter, on_row)
+    overlay_mac.hover(window, QEvent.MouseMove, on_row)
+    on_item = lst.viewport().mapToGlobal(lst.visualItemRect(lst.item(0)).center())
+    overlay_mac.hover(window, QEvent.MouseMove, on_item)
+    overlay_mac.hover(window, QEvent.Leave)
+    assert seen == [("row", True), ("row", False), ("item", "Ellinia")]
+    top.close()
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="overlay_mac needs AppKit")
 @pytest.mark.parametrize("active", [True, False])
 def test_release_keyboard_deactivates_only_when_active(monkeypatch, active):
     from maplelens import overlay_mac

@@ -26,7 +26,8 @@ rewards come from data shipped with the app, for quests the Quests tab already s
 - **Item pictures** (owner): each reward item shows the game's icon for it (layout A,
   owner).
 - **Rest of the chain**: in the details, the EXP and mesos the chain's later quests pay
-  together.
+  together, then their items: the ones always given in one group, counts added; each
+  quest's pick and random groups under its name (owner, 2026-11-15).
 
 ## Non-goals
 
@@ -35,7 +36,6 @@ rewards come from data shipped with the app, for quests the Quests tab already s
   The owner wants pay only for the quests they selected; reading every list row would
   also cost OCR on every tick.
 - **Fame.** Neither source has fame rewards; the game shows them.
-- **Items of the rest of the chain.** Its line adds up EXP and mesos only.
 
 ## Anti-goals
 

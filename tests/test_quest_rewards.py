@@ -31,7 +31,14 @@ def test_random_group_and_chain():
     out = details(d, d.quests[10201], None)
     assert out[0].label == "Random, 1 of:" and len(out[0].items) == 6
     assert out[0].items[0].tip == "Bronze Ore ×7"
-    assert out[-1] == "Rest of chain (4 quests): +28,080 EXP · 4,560 mesos"
+    assert out[1] == "Rest of chain (4 quests): +28,080 EXP · 4,560 mesos"
+    assert out[2].label == "Collecting 70 Cursed Dolls: random, 1 of:"  # chain's random items
+    assert [g.label for g in out[2:]][-1] == "Collecting 150 Cursed Dolls: random, 1 of:"
+    mine = details(d, d.quests[10201], "Thief")  # the class's items only for a known class
+    assert mine[-1] == Group(
+        "Collecting 200 Cursed Dolls: for your class:",
+        (Shown(1002156, "Dark Pilfer", 1, "Dark Pilfer"),),
+    )
     assert [q.id for q in chain_rest(d, d.quests[10204])] == [10205]
     last = details(d, d.quests[10205], None)  # the last of its chain: no chain line
     assert not any(isinstance(x, str) and x.startswith("Rest of chain") for x in last)
@@ -44,7 +51,9 @@ def test_chain_continues_past_another_chain():
     assert [q.id for q in chain_rest(d, d.quests[10614])] == [10617, 10618]
     assert [q.id for q in chain_rest(d, d.quests[10616])] == [10619, 10620]
     out = details(d, d.quests[10612], None)
-    assert out[-1] == "Rest of chain (4 quests): +32,189 EXP · 5,736 mesos"
+    assert out[1] == "Rest of chain (4 quests): +32,189 EXP · 5,736 mesos"
+    assert [s.tip for s in out[2].items] == ["Watermelon ×30", "Lemon ×20"]  # always, added up
+    assert out[3].label == "Matters of the Heart: random, 1 of:"
 
 
 def test_class_items():
